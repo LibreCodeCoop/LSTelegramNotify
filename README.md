@@ -1,5 +1,5 @@
 # LimeSurvey LSTelegramNotify Plugin
-
+plugin to get survey on Telegram
 The Limesurvey LSTelegramNotify plugin allows you to send after Survey event to Telegram.
 
 
