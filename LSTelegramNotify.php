@@ -39,6 +39,10 @@ class LSTelegramNotify extends PluginBase
      */
     public function telegramNotify()
     {
+        $authToken = $this->get('AuthToken');
+        if (!$authToken) {
+            return;
+        }
         $event      = $this->getEvent();
         $text = preg_replace(
             [
@@ -52,7 +56,7 @@ class LSTelegramNotify extends PluginBase
             $this->get('DefaultText')
         );
         $url = 'https://api.telegram.org/bot' .
-                $this->get('AuthToken') .
+                $authToken .
                 '/sendMessage?chat_id=' .
                 $this->get('ChatId') . 
                 '&text=' . urlencode($text);
