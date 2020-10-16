@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+    <metadata>
+        <name>LSTelegramNotify</name>
+        <type>plugin</type>
+        <creationDate>2020-10-15</creationDate>
+        <last_update>2020-10-15</last_update>
+        <author>Vitor Mattos (Lyseon Tech)</author>
+        <authorUrl>https://github.com/lyseontech</authorUrl>
+        <supportUrl>https://github.com/lyseontech/LSTelegramNotify</supportUrl>
+        <copyright>Copyright (C) 2019 Dr. Marcel Minke/survey-consulting.com, Inc. All rights reserved.</copyright>
+        <license>GNU General Public License version 2 or later</license>
+        <version>1.0.0</version>
+        <description><![CDATA[Notify form submission in Telegram]]></description>
+    </metadata>
+
+    <compatibility>
+        <version>4.0</version>
+        <version>3.0</version>
+    </compatibility>
+</config>
