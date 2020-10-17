@@ -25,41 +25,108 @@ class LSTelegramNotify extends PluginBase
             'default' =>
                 "New Survey Completed!\n" .
                 "SurveyId: {surveyId}\n" .
-                "ResponseId: {responseId}"
+                "ResponseId: {responseId}\n" .
+                "UrlPDF: {urlPDF}"
         ),
     );
 
     public function init()
     {
-        $this->subscribe('afterSurveyComplete', 'telegramNotify');
+        $this->subscribe('newSurveySettings');
+        $this->subscribe('afterSurveyComplete');
+        $this->subscribe('beforeSurveySettings');
     }
 
-    /**
-     * afterSurveyComplete
-     */
-    public function telegramNotify()
+    public function afterSurveyComplete()
     {
-        $authToken = $this->get('AuthToken');
-        if (!$authToken) {
-            return;
-        }
-        $event      = $this->getEvent();
-        $text = preg_replace(
+        $event = $this->getEvent();
+        $text  = preg_replace(
             [
                 '/\{surveyId\}/',
-                '/\{responseId\}/'
+                '/\{responseId\}/',
+                '/\{urlPDF\}/'
             ],
             [
                 $surveyId = $event->get('surveyId'),
-                $responseId = $event->get('responseId')
+                $responseId = $event->get('responseId'),
+                App()->createAbsoluteUrl(
+                    '/admin/responses/sa/viewquexmlpdf',
+                    array(
+                        'surveyid'=>$surveyId,
+                        'id'=>$responseId
+                    )
+                )
             ],
-            $this->get('DefaultText')
+            $this->get(
+                'DefaultText', 'Survey', $surveyId, // Survey
+                $this->get('DefaultText') // Global
+            )
         );
+        $this->sendMessage($surveyId, $text);
+    }
+
+    public function sendMessage($surveyId, $text)
+    {
         $url = 'https://api.telegram.org/bot' .
-                $authToken .
+                $this->get(
+                    'AuthToken', 'Survey', $surveyId, // Survey
+                    $this->get('AuthToken') // Global
+                ) .
                 '/sendMessage?chat_id=' .
-                $this->get('ChatId') . 
+                $this->get(
+                    'ChatId', 'Survey', $surveyId, // Survey
+                    $this->get('ChatId') // Global
+                ) . 
                 '&text=' . urlencode($text);
         file_get_contents($url);
+    }
+
+    public function beforeSurveySettings()
+    {
+        $event = $this->getEvent();
+        $event->set("surveysettings.{$this->id}", array(
+                'name' => get_class($this),
+                'settings' => array(
+                    'SettingsInfo'=>array(
+                        'type'=>'info',
+                        'content'=>'<legend><small>Telegram settings</small></legend>'
+                    ),
+                    'AuthToken' => array(
+                        'type' => 'string',
+                        'label' => 'Auth Token',
+                        'current' => $this->get(
+                            'AuthToken', 'Survey', $event->get('survey'), // Survey
+                            $this->get('AuthToken') // Global
+                        ),
+                    ),
+                    'ChatId' => array(
+                        'type' => 'string',
+                        'label' => 'chat id',
+                        'current' => $this->get(
+                            'ChatId', 'Survey', $event->get('survey'), // Survey
+                            $this->get('ChatId') // Global
+                        ),
+                    ),
+                    'DefaultText' => array(
+                        'type' => 'text',
+                        'label' => 'Default Text',
+                        'current' => $this->get(
+                            'DefaultText', 'Survey', $event->get('survey'), // Survey
+                            $this->get('DefaultText', null, null,
+                                $this->settings['DefaultText']['default']
+                            ) // Global
+                        ),
+                    )
+                )
+            ));
+
+    }
+
+    public function newSurveySettings()
+    {
+        $event = $this->getEvent();
+        foreach ($event->get('settings') as $name => $value) {
+            $this->set($name, $value, 'Survey', $event->get('survey'));
+        }
     }
 }
