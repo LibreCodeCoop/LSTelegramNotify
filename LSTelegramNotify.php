@@ -5,9 +5,19 @@
  */
 class LSTelegramNotify extends PluginBase
 {
+    /**
+     * @var string
+     */
     static protected $description = 'LSTelegramNotify Plugin';
+
+    /**
+     * @var string
+     */
     static protected $name = 'LSTelegramNotify';
 
+    /**
+     * @var string
+     */
     protected $storage = 'DbStorage';
 
     /**
