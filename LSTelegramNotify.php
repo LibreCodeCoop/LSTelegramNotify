@@ -31,11 +31,13 @@ class LSTelegramNotify extends PluginBase
     protected $settings = [
         'AuthToken' => [
             'type' => 'string',
-            'label' => 'Auth Token'
+            'label' => 'Auth Token',
+            'help' => 'Bot API auth token, you can get one at <a href="https://t.me/BotFather" target="_blank">BotFather</a>.',
         ],
         'ChatId' => [
             'type' => 'string',
-            'label' => 'Chat id'
+            'label' => 'Chat id',
+            'help' => 'The ID of group that will receive the notification messages. You can add the bot <a href="https://t.me/RawDataBot" target="_blank">RawDataBot</a> to your group, get the chat_id and after remove this bot from group.',
         ],
         'ParseMode' => [
             'type' => 'select',
@@ -64,7 +66,7 @@ class LSTelegramNotify extends PluginBase
                 "Title: <code>{title}</code>\n" .
                 "SurveyId: <code>{surveyId}</code>\n" .
                 "ResponseId: <code>{responseId}</code>\n" .
-                "PDF: <a href=\"{urlPDF}\">PDF</a>"
+                "PDF: <a href=\"{urlPDF}\">here</a>"
         ],
     ];
 
@@ -232,7 +234,8 @@ class LSTelegramNotify extends PluginBase
                     ],
                     'AuthToken' => [
                         'type' => 'string',
-                        'label' => 'Auth Token',
+                        'label' => $this->settings['AuthToken']['help'],
+                        'help' => $this->settings['AuthToken']['help'],
                         'current' => $this->get(
                             'AuthToken',
                             'Survey',
@@ -243,6 +246,7 @@ class LSTelegramNotify extends PluginBase
                     'ChatId' => [
                         'type' => 'string',
                         'label' => 'Chat id',
+                        'help' => $this->settings['ChatId']['help'],
                         'current' => $this->get(
                             'ChatId',
                             'Survey',
