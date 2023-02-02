@@ -2,6 +2,8 @@
 
 The Limesurvey LSTelegramNotify plugin allows you to send after Survey event to Telegram.
 
+<img src="img/telegram_example.png" />
+
 ## Plugin Installation
 
 - Copy the LSTelegramNotify folder to the Limesurvey "plugins" directory.
