@@ -1,5 +1,10 @@
 <?php
 
+use Telegram\Bot\Api;
+use Telegram\Bot\FileUpload\InputFile;
+
+require_once 'vendor/autoload.php';
+
 /**
  * Class LSTelegramNotify
  */
@@ -30,16 +35,36 @@ class LSTelegramNotify extends PluginBase
         ],
         'ChatId' => [
             'type' => 'string',
-            'label' => 'chat id'
+            'label' => 'Chat id'
+        ],
+        'ParseMode' => [
+            'type' => 'select',
+            'label' => 'Parse mode',
+            'options' => array('HTML' => 'HTML', 'Markdown'  => 'Markdown', 'MarkdownV2' => 'MarkdownV2'),
+            'help' => 'As the Telegram bot API <a href="https://core.telegram.org/bots/api#formatting-options" target="_blank">formatting options</a>.',
+            'default' => 'HTML',
+        ],
+        'SendPdf' => [
+            'type' => 'checkbox',
+            'label' => 'Check to send the answer as PDF file',
+        ],
+        'SendCsv' => [
+            'type' => 'checkbox',
+            'label' => 'Check to send all answers as CSV file',
+        ],
+        'SendMessage' => [
+            'type' => 'checkbox',
+            'label' => 'Check to send a text message using the default text template',
         ],
         'DefaultText' => [
             'type' => 'text',
             'label' => 'Default Text',
             'default' =>
                 "New Survey Completed!\n" .
-                "SurveyId: {surveyId}\n" .
-                "ResponseId: {responseId}\n" .
-                "UrlPDF: {urlPDF}"
+                "Title: <code>{title}</code>\n" .
+                "SurveyId: <code>{surveyId}</code>\n" .
+                "ResponseId: <code>{responseId}</code>\n" .
+                "PDF: <a href=\"{urlPDF}\">PDF</a>"
         ],
     ];
 
@@ -59,31 +84,24 @@ class LSTelegramNotify extends PluginBase
     public function afterSurveyComplete()
     {
         $event = $this->getEvent();
-        $text = preg_replace(
-            [
-                '/\{surveyId\}/',
-                '/\{responseId\}/',
-                '/\{urlPDF\}/'
-            ],
-            [
-                $surveyId = $event->get('surveyId'),
-                $responseId = $event->get('responseId'),
-                App()->createAbsoluteUrl(
-                    '/admin/responses/sa/viewquexmlpdf',
-                    [
-                        'surveyid' => $surveyId,
-                        'id' => $responseId
-                    ]
-                )
-            ],
-            $this->get(
-                'DefaultText',
-                'Survey',
-                $surveyId, // Survey
-                $this->get('DefaultText') // Global
-            )
+        $surveyId = $event->get('surveyId');
+        $responseId = $event->get('responseId');
+        $oSurvey = Survey::model()->findByPk($surveyId);
+        $chatId = $this->get(
+            'ChatId',
+            'Survey',
+            $surveyId, // Survey
+            $this->get('ChatId') // Global
         );
-        $this->sendMessage($surveyId, $text);
+        $telegram = new Api($this->get(
+            'AuthToken',
+            'Survey',
+            $surveyId, // Survey
+            $this->get('AuthToken') // Global
+        ));
+        $this->sendMessage($surveyId, $responseId, $chatId, $telegram, $oSurvey->getLocalizedTitle());
+        $this->sendPdf($surveyId, $responseId, $chatId, $telegram);
+        $this->sendCsv($surveyId, $responseId, $chatId, $telegram);
     }
 
     /**
@@ -92,25 +110,109 @@ class LSTelegramNotify extends PluginBase
      * @param $surveyId
      * @param $text
      */
-    public function sendMessage($surveyId, $text)
+    public function sendMessage($surveyId, $responseId, $chatId, Api $telegram, $title)
     {
-        $url = 'https://api.telegram.org/bot' .
+        $sendMessage = $this->get(
+            'SendMessage',
+            'Survey',
+            $surveyId, // Survey
+            $this->get('SendMessage') // Global
+        );
+        if (!$sendMessage) {
+            return;
+        }
+        $text = preg_replace(
+            [
+                '/\{surveyId\}/',
+                '/\{responseId\}/',
+                '/\{urlPDF\}/',
+                '/\{title\}/',
+            ],
+            [
+                $surveyId,
+                $responseId,
+                App()->createAbsoluteUrl(
+                    '/admin/responses/sa/viewquexmlpdf',
+                    [
+                        'surveyid' => $surveyId,
+                        'id' => $responseId
+                    ]
+                ),
+                $title,
+            ],
             $this->get(
-                'AuthToken',
+                'DefaultText',
                 'Survey',
                 $surveyId, // Survey
-                $this->get('AuthToken') // Global
-            ) .
-            '/sendMessage?chat_id=' .
-            $this->get(
-                'ChatId',
+                $this->get('DefaultText') // Global
+            )
+        );
+        $telegram->sendMessage([
+            'chat_id' => $chatId,
+            'parse_mode' => $this->get(
+                'ParseMode',
                 'Survey',
                 $surveyId, // Survey
-                $this->get('ChatId') // Global
-            ) .
-            '&text=' . urlencode($text);
+                $this->get('ParseMode') // Global
+            ),
+            'text' => $text
+        ]);
+    }
 
-        file_get_contents($url);
+    private function sendPdf($surveyId, $responseId, $chatId, Api $telegram): void
+    {
+        $sendPdf = $this->get(
+            'SendPdf',
+            'Survey',
+            $surveyId, // Survey
+            $this->get('SendPdf') // Global
+        );
+        if (!$sendPdf) {
+            return;
+        }
+        $pdfPath = $this->getPdfPath($surveyId, $responseId);
+        $inputFile = new InputFile($pdfPath, "$surveyId-$responseId.pdf");
+        $telegram->sendDocument([
+            'chat_id' => $chatId,
+            'document' => $inputFile,
+        ]);
+        unlink($pdfPath);
+    }
+
+    private function sendCsv($surveyId, $responseId, $chatId, Api $telegram): void
+    {
+        $sendCsv = $this->get(
+            'SendCsv',
+            'Survey',
+            $surveyId, // Survey
+            $this->get('SendCsv') // Global
+        );
+        if (!$sendCsv) {
+            return;
+        }
+        $pdfPath = $this->getCsv($surveyId, $responseId);
+        $inputFile = new InputFile($pdfPath, "$surveyId-$responseId.csv");
+        $telegram->sendDocument([
+            'chat_id' => $chatId,
+            'document' => $inputFile,
+        ]);
+        unlink($pdfPath);
+    }
+
+    private function getPdfPath($surveyId, $responseId): string
+    {
+        Yii::import("application.libraries.admin.quexmlpdf", true);
+        $oSurvey = Survey::model()->findByPk($surveyId);
+        $quexmlpdf = new quexmlpdf();
+        set_time_limit(120);
+        App()->loadHelper('export');
+        $quexml = quexml_export($surveyId, current($oSurvey->allLanguages), $responseId);
+        $quexmlpdf->create($quexmlpdf->createqueXML($quexml));
+
+        $tempnam = tempnam(sys_get_temp_dir(), 'pdf_');
+
+        $quexmlpdf->Output($tempnam, 'F');
+        return $tempnam;
     }
 
     /**
@@ -140,12 +242,75 @@ class LSTelegramNotify extends PluginBase
                     ],
                     'ChatId' => [
                         'type' => 'string',
-                        'label' => 'chat id',
+                        'label' => 'Chat id',
                         'current' => $this->get(
                             'ChatId',
                             'Survey',
                             $event->get('survey'), // Survey
                             $this->get('ChatId') // Global
+                        ),
+                    ],
+                    'ParseMode' => [
+                        'type' => $this->settings['ParseMode']['type'],
+                        'label' => $this->settings['ParseMode']['label'],
+                        'options' => $this->settings['ParseMode']['options'],
+                        'help' => $this->settings['ParseMode']['help'],
+                        'default' => $this->settings['ParseMode']['default'],
+                        'current' => $this->get(
+                            'ParseMode',
+                            'Survey',
+                            $event->get('survey'), // Survey
+                            $this->get(
+                                'ParseMode',
+                                null,
+                                null,
+                                $this->settings['ParseMode']['default']
+                            ) // Global
+                        ),
+                    ],
+                    'SendPdf' => [
+                        'type' => $this->settings['SendPdf']['type'],
+                        'label' => $this->settings['SendPdf']['label'],
+                        'current' => $this->get(
+                            'SendPdf',
+                            'Survey',
+                            $event->get('survey'), // Survey
+                            $this->get(
+                                'SendPdf',
+                                null,
+                                null,
+                                $this->settings['SendPdf']['default']
+                            ) // Global
+                        ),
+                    ],
+                    'SendCsv' => [
+                        'type' => $this->settings['SendCsv']['type'],
+                        'label' => $this->settings['SendCsv']['label'],
+                        'current' => $this->get(
+                            'SendCsv',
+                            'Survey',
+                            $event->get('survey'), // Survey
+                            $this->get(
+                                'SendCsv',
+                                null,
+                                null,
+                                $this->settings['SendCsv']['default']
+                            ) // Global
+                        ),
+                    ],
+                    'SendMessage' => [
+                        'type' => $this->settings['SendMessage']['type'],
+                        'label' => $this->settings['SendMessage']['label'],
+                        'current' => $this->get(
+                            'SendMessage',
+                            'Survey',
+                            $event->get('survey'), // Survey
+                            $this->get(
+                                'SendMessage',
+                                null,
+                                null,
+                                $this->settings['SendMessage']['default']
+                            ) // Global
                         ),
                     ],
                     'DefaultText' => [
@@ -178,5 +343,34 @@ class LSTelegramNotify extends PluginBase
         foreach ($event->get('settings') as $name => $value) {
             $this->set($name, $value, 'Survey', $event->get('survey'));
         }
+    }
+
+    /**
+     * Save file to CSV
+     *
+     * @return string File path
+     */
+    private function getCsv(): string
+    {
+        Yii::import('application.helpers.admin.export.FormattingOptions', true);
+        Yii::import('application.helpers.admin.exportresults_helper', true);
+        $survey = Survey::model()->findByPk($this->getEvent()->get('surveyId'));
+        if (!($maxId = SurveyDynamic::model($this->getEvent()->get('surveyId'))->getMaxId())) {
+            throw new Exception('No Data, could not get max id.', 1);
+        }
+        $oFormattingOptions = new FormattingOptions();
+        $oFormattingOptions->responseMinRecord = 1;
+        $oFormattingOptions->responseMaxRecord = $maxId;
+        $aFields = array_keys(createFieldMap($survey, 'full', true, false, $survey->language));
+        $aTokenFields = array('tid','participant_id','firstname','lastname','email','emailstatus','language','blacklisted','sent','remindersent','remindercount','completed','usesleft','validfrom','validuntil','mpid');
+        $oFormattingOptions->selectedColumns = array_merge($aFields,$aTokenFields, array_keys($survey->tokenAttributes));
+        $oFormattingOptions->responseCompletionState = 'all';
+        $oFormattingOptions->headingFormat = 'full';
+        $oFormattingOptions->answerFormat = 'long';
+        $oFormattingOptions->csvFieldSeparator = ',';
+        $oFormattingOptions->output = 'file';
+        $oExport = new ExportSurveyResultsService();
+        $tempFile = $oExport->exportResponses($this->getEvent()->get('surveyId'), $survey->language, 'csv', $oFormattingOptions, '');
+        return $tempFile;
     }
 }
