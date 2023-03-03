@@ -3,7 +3,7 @@
 use Telegram\Bot\Api;
 use Telegram\Bot\FileUpload\InputFile;
 
-require_once 'vendor/autoload.php';
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'vendor/autoload.php';
 
 /**
  * Class LSTelegramNotify
