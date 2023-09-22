@@ -1,9 +1,7 @@
 <?php
 
-use Telegram\Bot\Api;
-use Telegram\Bot\FileUpload\InputFile;
-
-require_once 'vendor/autoload.php';
+require_once 'InputFile.php';
+require_once 'Telegram.php';
 
 /**
  * Class LSTelegramNotify
@@ -95,7 +93,7 @@ class LSTelegramNotify extends PluginBase
             $surveyId, // Survey
             $this->get('ChatId') // Global
         );
-        $telegram = new Api($this->get(
+        $telegram = new Telegram($this->get(
             'AuthToken',
             'Survey',
             $surveyId, // Survey
@@ -112,7 +110,7 @@ class LSTelegramNotify extends PluginBase
      * @param $surveyId
      * @param $text
      */
-    public function sendMessage($surveyId, $responseId, $chatId, Api $telegram, $title)
+    public function sendMessage($surveyId, $responseId, $chatId, Telegram $telegram, $title)
     {
         $sendMessage = $this->get(
             'SendMessage',
@@ -161,7 +159,7 @@ class LSTelegramNotify extends PluginBase
         ]);
     }
 
-    private function sendPdf($surveyId, $responseId, $chatId, Api $telegram): void
+    private function sendPdf($surveyId, $responseId, $chatId, Telegram $telegram): void
     {
         $sendPdf = $this->get(
             'SendPdf',
@@ -181,7 +179,7 @@ class LSTelegramNotify extends PluginBase
         unlink($pdfPath);
     }
 
-    private function sendCsv($surveyId, $responseId, $chatId, Api $telegram): void
+    private function sendCsv($surveyId, $responseId, $chatId, Telegram $telegram): void
     {
         $sendCsv = $this->get(
             'SendCsv',
