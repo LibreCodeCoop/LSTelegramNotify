@@ -85,20 +85,27 @@ class LSTelegramNotify extends PluginBase
     {
         $event = $this->getEvent();
         $surveyId = $event->get('surveyId');
-        $responseId = $event->get('responseId');
-        $oSurvey = Survey::model()->findByPk($surveyId);
         $chatId = $this->get(
             'ChatId',
             'Survey',
             $surveyId, // Survey
             $this->get('ChatId') // Global
         );
-        $telegram = new Telegram($this->get(
+        if (!$chatId) {
+            return;
+        }
+        $authToken = $this->get(
             'AuthToken',
             'Survey',
             $surveyId, // Survey
             $this->get('AuthToken') // Global
-        ));
+        );
+        if (!$authToken) {
+            return;
+        }
+        $telegram = new Telegram($authToken);
+        $responseId = $event->get('responseId');
+        $oSurvey = Survey::model()->findByPk($surveyId);
         $this->sendMessage($surveyId, $responseId, $chatId, $telegram, $oSurvey->getLocalizedTitle());
         $this->sendPdf($surveyId, $responseId, $chatId, $telegram);
         $this->sendCsv($surveyId, $responseId, $chatId, $telegram);
