@@ -112,7 +112,7 @@ class LSTelegramNotify extends PluginBase
      * @param $surveyId
      * @param $text
      */
-    public function sendMessage($surveyId, $responseId, $chatId, Api $telegram, $title)
+    public function sendMessage(int $surveyId, int $responseId, string $chatId, Api $telegram, string $title): void
     {
         $sendMessage = $this->get(
             'SendMessage',
