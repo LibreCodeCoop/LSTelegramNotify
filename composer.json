@@ -1,5 +1,28 @@
 {
+    "name": "librecodecoop/lstelegramnotify",
+    "description": "LimeSurvey plugin to notify survey submissions in Telegram",
+    "type": "limesurvey-plugin",
+    "license": "AGPL-3.0-or-later",
     "require": {
         "irazasyed/telegram-bot-sdk": "^3.9"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0"
+    },
+    "autoload": {
+        "classmap": [
+            "LSTelegramNotify.php"
+        ]
+    },
+    "autoload-dev": {
+        "files": [
+            "tests/Support/LimeSurveyStubs.php"
+        ],
+        "psr-4": {
+            "LSTelegramNotify\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test:unit": "phpunit -c phpunit.xml"
     }
 }
