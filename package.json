@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "playwright:install": "playwright install chromium",
+    "screenshots:test": "node --test tests/Node/Scripts/Screenshots/*.test.mjs",
     "screenshots:update": "node ./scripts/update-screenshots.mjs"
   },
   "devDependencies": {
