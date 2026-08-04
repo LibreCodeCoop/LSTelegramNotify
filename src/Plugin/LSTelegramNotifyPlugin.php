@@ -48,14 +48,17 @@ class LSTelegramNotifyPlugin extends \PluginBase
 		'SendPdf' => [
 			'type' => 'checkbox',
 			'label' => 'Check to send the answer as PDF file',
+			'default' => false,
 		],
 		'SendCsv' => [
 			'type' => 'checkbox',
 			'label' => 'Check to send all answers as CSV file',
+			'default' => false,
 		],
 		'SendMessage' => [
 			'type' => 'checkbox',
 			'label' => 'Check to send a text message using the default text template',
+			'default' => false,
 		],
 		'DefaultText' => [
 			'type' => 'text',
