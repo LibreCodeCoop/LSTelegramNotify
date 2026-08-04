@@ -1,6 +1,8 @@
 <?xml version="1.0"?>
 <psalm
+    autoloader="tests/bootstrap.php"
     errorLevel="6"
+    errorBaseline="tests/psalm-baseline.xml"
     resolveFromConfigFile="true"
     findUnusedCode="false"
     findUnusedBaselineEntry="true"
@@ -18,8 +20,4 @@
             <directory name="scripts" />
         </ignoreFiles>
     </projectFiles>
-
-    <stubs>
-        <file name="psalm-stubs/limesurvey.php" />
-    </stubs>
 </psalm>
