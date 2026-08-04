@@ -10,6 +10,8 @@ Useful improvements inspired by the `LSTelegramNotifyPlus` fork and now availabl
 - extra URL placeholders for common survey/response actions
 - mustache placeholders for survey question/answer/raw values
 
+The image below is a locally generated preview of a rendered Telegram message using sample data:
+
 <img src="img/telegram_example.png" />
 
 ## Plugin Installation
@@ -53,6 +55,8 @@ Shorthand aliases are also available:
 - `{{answer_FIELD_CODE}}`
 - `{{raw_FIELD_CODE}}`
 
+The global plugin settings screen documents the available placeholders directly in the UI:
+
 <img src="img/settings.png" />
 
 ### Custom settings by survey
@@ -61,3 +65,19 @@ You can add custom settings by survey to send the messages to other groups, cust
 - Go to survey settings
 - GO to `Simple plugins`
 - Define your custom settings at `Settings for plugin LSTelegramNotify `
+
+## Updating documentation screenshots
+
+The repository includes a Playwright-based command to refresh the documentation screenshots.
+
+- `img/settings.png` is captured from the LimeSurvey admin interface with sensitive values masked before the screenshot is saved.
+- `img/telegram_example.png` is generated locally as an illustrative preview using sample data, so no Telegram access is required.
+
+To regenerate the images:
+
+1. Copy `.env.example` to `.env` and adjust the LimeSurvey admin credentials for your local environment.
+2. Install the Node dependencies with `npm install`.
+3. Install the Chromium browser used by Playwright with `npm run playwright:install`.
+4. Run `npm run screenshots:update`.
+
+If you prefer not to edit `.env`, you can also override the credentials inline when running the command.
