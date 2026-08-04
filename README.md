@@ -2,7 +2,7 @@
 
 The LimeSurvey `LSTelegramNotify` plugin sends survey completion notifications to Telegram.
 
-Useful improvements inspired by the `LSTelegramNotifyPlus` fork and now available here include:
+Useful improvements now available in this plugin include:
 
 - global/per-survey `Enable` switch for notifications
 - HTML-safe rendering when using `ParseMode = HTML`
@@ -12,6 +12,7 @@ Useful improvements inspired by the `LSTelegramNotifyPlus` fork and now availabl
 
 The image below is a locally generated preview of a rendered Telegram message using sample data:
 
+<!-- Maintainers: screenshot automation for the documentation images lives in `scripts/screenshots/README.md`. CI validates both screenshots, including this preview image. -->
 <img src="img/telegram_example.png" />
 
 ## Plugin Installation
@@ -57,6 +58,7 @@ Shorthand aliases are also available:
 
 The global plugin settings screen documents the available placeholders directly in the UI:
 
+<!-- Maintainers: CI validates this settings screenshot too. See `scripts/screenshots/README.md` for the local regeneration flow and disposable LimeSurvey stack. -->
 <img src="img/settings.png" />
 
 ### Custom settings by survey
@@ -66,18 +68,3 @@ You can add custom settings by survey to send the messages to other groups, cust
 - GO to `Simple plugins`
 - Define your custom settings at `Settings for plugin LSTelegramNotify `
 
-## Updating documentation screenshots
-
-The repository includes a Playwright-based command to refresh the documentation screenshots.
-
-- `img/settings.png` is captured from the LimeSurvey admin interface with sensitive values masked before the screenshot is saved.
-- `img/telegram_example.png` is generated locally as an illustrative preview using sample data, so no Telegram access is required.
-
-To regenerate the images:
-
-1. Copy `.env.example` to `.env` and adjust the LimeSurvey admin credentials for your local environment.
-2. Install the Node dependencies with `npm install`.
-3. Install the Chromium browser used by Playwright with `npm run playwright:install`.
-4. Run `npm run screenshots:update`.
-
-If you prefer not to edit `.env`, you can also override the credentials inline when running the command.
