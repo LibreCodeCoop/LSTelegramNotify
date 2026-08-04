@@ -56,6 +56,12 @@ class LSTelegramNotifyPluginDouble extends LSTelegramNotifyPlugin
         return $this->subscribedEvents;
     }
 
+    /** @return array<string, mixed> */
+    public function getSettingsDefinition(): array
+    {
+        return $this->settings;
+    }
+
     protected function get($key = null, $model = null, $id = null, $default = null)
     {
         return array_key_exists((string) $key, $this->mockedSettings)
