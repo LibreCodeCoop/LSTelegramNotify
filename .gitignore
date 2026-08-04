@@ -5,3 +5,4 @@
 /playwright-report/
 /test-results/
 /.php-cs-fixer.cache
+/.psalm/
