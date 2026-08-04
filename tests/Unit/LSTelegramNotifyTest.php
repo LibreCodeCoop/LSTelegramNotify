@@ -22,12 +22,14 @@ class LSTelegramNotifyTest extends TestCase
         int $surveyId,
         int $responseId,
         ?callable $urlHandler,
+        array $templateFields,
         int $expectedRequestCount,
         ?array $expectedPayload,
     ): void
     {
-        $plugin = (new \ReflectionClass(LSTelegramNotifyTestDouble::class))->newInstanceWithoutConstructor();
+        $plugin = (new \ReflectionClass(\LSTelegramNotifyTestDouble::class))->newInstanceWithoutConstructor();
         $plugin->setMockedSettings($settings);
+        $plugin->setMockedTemplateFields($templateFields);
 
         \AppRuntimeMock::$createAbsoluteUrlHandler = $urlHandler;
 
@@ -65,6 +67,7 @@ class LSTelegramNotifyTest extends TestCase
                 101,
                 202,
                 null,
+                [],
                 0,
                 null,
             ],
@@ -80,12 +83,63 @@ class LSTelegramNotifyTest extends TestCase
                 static function ($route, array $params): string {
                     return 'https://example.test' . $route . '?surveyid=' . $params['surveyid'] . '&id=' . $params['id'];
                 },
+                [],
                 1,
                 [
                     'method' => 'sendMessage',
                     'chat_id' => 'chat-99',
                     'parse_mode' => 'MarkdownV2',
                     'text' => 'Survey=11;Response=22;Title=Customer Satisfaction;Pdf=https://example.test/admin/responses/sa/viewquexmlpdf?surveyid=11&id=22',
+                ],
+            ],
+            'send enabled renders mustache placeholders for survey fields and metadata' => [
+                [
+                    'SendMessage' => true,
+                    'DefaultText' => "Pergunta: {{field:CONTATO[EMAIL].question}}\nResposta: {{field:CONTATO[EMAIL].answer}}\nSurvey={{surveyId}};Response={{responseId}};Title={{title}}",
+                    'ParseMode' => 'HTML',
+                ],
+                'Ficha de cadastro',
+                55,
+                66,
+                null,
+                [
+                    'CONTATO[EMAIL]' => [
+                        'question' => 'E-mail para contato',
+                        'answer' => 'ada@example.test',
+                        'raw' => 'ada@example.test',
+                    ],
+                ],
+                1,
+                [
+                    'method' => 'sendMessage',
+                    'chat_id' => 'chat-99',
+                    'parse_mode' => 'HTML',
+                    'text' => "Pergunta: E-mail para contato\nResposta: ada@example.test\nSurvey=55;Response=66;Title=Ficha de cadastro",
+                ],
+            ],
+            'send enabled renders shorthand placeholders by field code with prefix and suffix' => [
+                [
+                    'SendMessage' => true,
+                    'DefaultText' => "Pergunta: {{CONTATO[EMAIL]}}\nResposta A: {{CONTATO[EMAIL]_answer}}\nResposta B: {{answer_CONTATO[EMAIL]}}\nRaw: {{raw_CONTATO[EMAIL]}}",
+                    'ParseMode' => 'HTML',
+                ],
+                'Ficha de cadastro',
+                55,
+                66,
+                null,
+                [
+                    'CONTATO[EMAIL]' => [
+                        'question' => 'E-mail para contato',
+                        'answer' => 'ada@example.test',
+                        'raw' => 'ada@example.test',
+                    ],
+                ],
+                1,
+                [
+                    'method' => 'sendMessage',
+                    'chat_id' => 'chat-99',
+                    'parse_mode' => 'HTML',
+                    'text' => "Pergunta: E-mail para contato\nResposta A: ada@example.test\nResposta B: ada@example.test\nRaw: ada@example.test",
                 ],
             ],
         ];
