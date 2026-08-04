@@ -65,6 +65,8 @@ class SurveyFieldValueProvider
     }
 
     /**
+     * @param array<string, mixed>|object $response
+     *
      * @return array<string, mixed>
      */
     protected function extractResponseAttributes($response): array
