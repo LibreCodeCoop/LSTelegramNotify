@@ -3,6 +3,7 @@
 require_once dirname(__DIR__, 3) . '/vendor/autoload.php';
 
 use LibreCodeCoop\LSTelegramNotify\Survey\SurveyFieldPlaceholderCatalogProvider;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class SurveyFieldPlaceholderCatalogProviderTest extends TestCase
@@ -15,21 +16,14 @@ class SurveyFieldPlaceholderCatalogProviderTest extends TestCase
         \viewHelper::$getFieldCodeHandler = null;
     }
 
-    public function testGetFieldPlaceholderCatalogReturnsEmptyWhenSurveyDoesNotExist(): void
+    #[DataProvider('emptyCatalogScenarios')]
+    public function testGetFieldPlaceholderCatalogReturnsEmptyForEmptyScenarios(callable $configureRuntime, int $surveyId): void
     {
-        $provider = new SurveyFieldPlaceholderCatalogProvider();
-
-        $this->assertSame([], $provider->getFieldPlaceholderCatalog(1));
-    }
-
-    public function testGetFieldPlaceholderCatalogReturnsEmptyWhenFieldMapIsEmpty(): void
-    {
-        \Survey::$findByPkHandler = static fn (int $id) => (object) ['language' => 'pt-BR'];
-        \FieldMapRuntimeMock::$createFieldMapHandler = static fn ($survey, $style, $full, $flatten, $language): array => [];
+        $configureRuntime();
 
         $provider = new SurveyFieldPlaceholderCatalogProvider();
 
-        $this->assertSame([], $provider->getFieldPlaceholderCatalog(1));
+        $this->assertSame([], $provider->getFieldPlaceholderCatalog($surveyId));
     }
 
     public function testGetFieldPlaceholderCatalogBuildsSortedUniqueLabelsAndFallsBackToFieldName(): void
@@ -78,5 +72,23 @@ class SurveyFieldPlaceholderCatalogProviderTest extends TestCase
             'NOME' => 'Nome completo',
             'SEM_LABEL' => '12345X1X3',
         ], $provider->getFieldPlaceholderCatalog(77));
+    }
+
+    public static function emptyCatalogScenarios(): array
+    {
+        return [
+            'survey does not exist' => [
+                static function (): void {
+                },
+                1,
+            ],
+            'field map is empty' => [
+                static function (): void {
+                    \Survey::$findByPkHandler = static fn (int $id) => (object) ['language' => 'pt-BR'];
+                    \FieldMapRuntimeMock::$createFieldMapHandler = static fn ($survey, $style, $full, $flatten, $language): array => [];
+                },
+                1,
+            ],
+        ];
     }
 }
