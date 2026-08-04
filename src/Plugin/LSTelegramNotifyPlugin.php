@@ -2,6 +2,7 @@
 
 namespace LibreCodeCoop\LSTelegramNotify\Plugin;
 
+use LibreCodeCoop\LSTelegramNotify\Survey\SurveyFieldPlaceholderCatalogProvider;
 use LibreCodeCoop\LSTelegramNotify\Survey\SurveyFieldValueProvider;
 use LibreCodeCoop\LSTelegramNotify\Template\MessageTemplateRenderer;
 use Telegram\Bot\Api;
@@ -82,7 +83,7 @@ class LSTelegramNotifyPlugin extends \PluginBase
 	 */
 	public function init(): void
 	{
-		$this->settings['DefaultText']['help'] = $this->buildDefaultTextHelp();
+		$this->settings['DefaultText']['help'] = $this->createDefaultTextHelpBuilder()->build();
 		$this->subscribe('newSurveySettings');
 		$this->subscribe('afterSurveyComplete');
 		$this->subscribe('beforeSurveySettings');
@@ -288,153 +289,14 @@ class LSTelegramNotifyPlugin extends \PluginBase
 		return htmlspecialchars($value, ENT_QUOTES);
 	}
 
-	protected function buildDefaultTextHelp(?int $surveyId = null): string
+	protected function createDefaultTextHelpBuilder(): DefaultTextHelpBuilder
 	{
-		$sections = [
-			'<p>Available placeholders for the Telegram message template:</p>',
-			'<p><strong>Metadata placeholders</strong></p>',
-			'<ul>' . $this->buildMetadataPlaceholderHelpItems() . '</ul>',
-			'<p><strong>Survey field syntax</strong></p>',
-			'<ul>' . $this->buildFieldSyntaxHelpItems() . '</ul>',
-			'<p>When <code>ParseMode</code> is <code>HTML</code>, placeholder values are escaped automatically before rendering.</p>',
-		];
-
-		if ($surveyId === null) {
-			$sections[] = '<p>Open the survey-specific plugin settings to see the field codes available for a particular survey.</p>';
-
-			return implode("\n", $sections);
-		}
-
-		$fieldCatalog = $this->getSurveyFieldPlaceholderCatalog($surveyId);
-
-		if ($fieldCatalog === []) {
-			$sections[] = '<p>No field codes could be identified for this survey.</p>';
-
-			return implode("\n", $sections);
-		}
-
-		$fieldItems = [];
-
-		foreach ($fieldCatalog as $fieldCode => $label) {
-			$fieldItems[] = sprintf(
-				'<li><code>%s</code> &mdash; %s</li>',
-				htmlspecialchars($fieldCode, ENT_QUOTES),
-				htmlspecialchars($label, ENT_QUOTES)
-			);
-		}
-
-		$sections[] = '<p><strong>Field codes available in this survey</strong></p>';
-		$sections[] = '<ul>' . implode('', $fieldItems) . '</ul>';
-
-		return implode("\n", $sections);
+		return new DefaultTextHelpBuilder($this->createSurveyFieldPlaceholderCatalogProvider());
 	}
 
-	protected function buildMetadataPlaceholderHelpItems(): string
+	protected function createSurveyFieldPlaceholderCatalogProvider(): SurveyFieldPlaceholderCatalogProvider
 	{
-		$placeholders = [
-			['tokens' => ['{title}', '{{title}}'], 'description' => 'Survey title'],
-			['tokens' => ['{surveyId}', '{{surveyId}}'], 'description' => 'Survey identifier'],
-			['tokens' => ['{responseId}', '{{responseId}}'], 'description' => 'Response identifier'],
-			['tokens' => ['{urlPDF}', '{{urlPDF}}'], 'description' => 'PDF download URL'],
-			['tokens' => ['{urlSurvey}', '{{urlSurvey}}'], 'description' => 'Survey administration URL'],
-			['tokens' => ['{urlDetails}', '{{urlDetails}}'], 'description' => 'Response details URL'],
-			['tokens' => ['{urlEdit}', '{{urlEdit}}'], 'description' => 'Response edit URL'],
-			['tokens' => ['{urlExport}', '{{urlExport}}'], 'description' => 'Response export URL'],
-			['tokens' => ['{urlAttachments}', '{{urlAttachments}}'], 'description' => 'Response attachments URL'],
-		];
-
-		$items = [];
-
-		foreach ($placeholders as $placeholder) {
-			$items[] = sprintf(
-				'<li>%s &mdash; %s</li>',
-				$this->formatHelpCodeTokens($placeholder['tokens']),
-				htmlspecialchars($placeholder['description'], ENT_QUOTES)
-			);
-		}
-
-		return implode('', $items);
-	}
-
-	protected function buildFieldSyntaxHelpItems(): string
-	{
-		$placeholders = [
-			['token' => '{{field:FIELD_CODE.question}}', 'description' => 'Question text for a survey field'],
-			['token' => '{{field:FIELD_CODE.answer}}', 'description' => 'Formatted answer for a survey field'],
-			['token' => '{{field:FIELD_CODE.raw}}', 'description' => 'Raw stored value for a survey field'],
-			['token' => '{{FIELD_CODE}}', 'description' => 'Shortcut for the question text'],
-			['token' => '{{FIELD_CODE_answer}}', 'description' => 'Shortcut for the formatted answer'],
-			['token' => '{{answer_FIELD_CODE}}', 'description' => 'Alternative answer shortcut'],
-			['token' => '{{raw_FIELD_CODE}}', 'description' => 'Shortcut for the raw stored value'],
-		];
-
-		$items = [];
-
-		foreach ($placeholders as $placeholder) {
-			$items[] = sprintf(
-				'<li><code>%s</code> &mdash; %s</li>',
-				htmlspecialchars($placeholder['token'], ENT_QUOTES),
-				htmlspecialchars($placeholder['description'], ENT_QUOTES)
-			);
-		}
-
-		return implode('', $items);
-	}
-
-	protected function formatHelpCodeTokens(array $tokens): string
-	{
-		$formatted = array_map(function (string $token): string {
-			return '<code>' . htmlspecialchars($token, ENT_QUOTES) . '</code>';
-		}, $tokens);
-
-		return implode(' / ', $formatted);
-	}
-
-	/**
-	 * @return array<string, string>
-	 */
-	protected function getSurveyFieldPlaceholderCatalog(int $surveyId): array
-	{
-		$survey = \Survey::model()->findByPk($surveyId);
-
-		if ($survey === null) {
-			return [];
-		}
-
-		\Yii::import('application.helpers.viewHelper', true);
-		$fieldMap = \createFieldMap($survey, 'full', true, false, $survey->language);
-
-		if (!is_array($fieldMap)) {
-			return [];
-		}
-
-		$fieldCatalog = [];
-
-		foreach ($fieldMap as $fieldName => $field) {
-			$fieldCode = trim((string) \viewHelper::getFieldCode($field, ['separator' => ['[', ']']]));
-
-			if ($fieldCode === '') {
-				continue;
-			}
-
-			$label = trim((string) \viewHelper::getFieldText($field, [
-				'flat' => true,
-				'separator' => ['[', ']'],
-				'afterquestion' => ' ',
-			]));
-
-			if ($label === '') {
-				$label = (string) $fieldName;
-			}
-
-			if (!array_key_exists($fieldCode, $fieldCatalog)) {
-				$fieldCatalog[$fieldCode] = $label;
-			}
-		}
-
-		ksort($fieldCatalog, SORT_NATURAL | SORT_FLAG_CASE);
-
-		return $fieldCatalog;
+		return new SurveyFieldPlaceholderCatalogProvider();
 	}
 
 	protected function createMessageTemplateRenderer(): MessageTemplateRenderer
@@ -518,6 +380,7 @@ class LSTelegramNotifyPlugin extends \PluginBase
 	{
 		$event = $this->getEvent();
 		$surveyId = (int) $event->get('survey');
+		$defaultTextHelp = $this->createDefaultTextHelpBuilder()->build($surveyId);
 		$event->set(
 			"surveysettings.{$this->id}",
 			[
@@ -631,7 +494,7 @@ class LSTelegramNotifyPlugin extends \PluginBase
 					'DefaultText' => [
 						'type' => 'text',
 						'label' => 'Default Text',
-						'help' => $this->buildDefaultTextHelp($surveyId),
+						'help' => $defaultTextHelp,
 						'current' => $this->get(
 							'DefaultText',
 							'Survey',
