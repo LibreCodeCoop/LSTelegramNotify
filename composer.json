@@ -12,7 +12,10 @@
     "autoload": {
         "classmap": [
             "LSTelegramNotify.php"
-        ]
+        ],
+        "psr-4": {
+            "LibreCodeCoop\\LSTelegramNotify\\": "src/"
+        }
     },
     "autoload-dev": {
         "files": [
