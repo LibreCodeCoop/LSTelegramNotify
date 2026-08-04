@@ -75,7 +75,7 @@ class LSTelegramNotifyPlugin extends \PluginBase
 	/**
 	 * @return void
 	 */
-	public function init()
+	public function init(): void
 	{
 		$this->subscribe('newSurveySettings');
 		$this->subscribe('afterSurveyComplete');
@@ -85,7 +85,7 @@ class LSTelegramNotifyPlugin extends \PluginBase
 	/**
 	 * @return void
 	 */
-	public function afterSurveyComplete()
+	public function afterSurveyComplete(): void
 	{
 		$event = $this->getEvent();
 		$surveyId = $event->get('surveyId');
@@ -188,7 +188,7 @@ class LSTelegramNotifyPlugin extends \PluginBase
 		return new SurveyFieldValueProvider();
 	}
 
-	private function sendPdf($surveyId, $responseId, $chatId, Api $telegram): void
+	private function sendPdf(int $surveyId, int $responseId, string $chatId, Api $telegram): void
 	{
 		$sendPdf = $this->get(
 			'SendPdf',
@@ -208,7 +208,7 @@ class LSTelegramNotifyPlugin extends \PluginBase
 		unlink($pdfPath);
 	}
 
-	private function sendCsv($surveyId, $responseId, $chatId, Api $telegram): void
+	private function sendCsv(int $surveyId, int $responseId, string $chatId, Api $telegram): void
 	{
 		$sendCsv = $this->get(
 			'SendCsv',
@@ -228,7 +228,7 @@ class LSTelegramNotifyPlugin extends \PluginBase
 		unlink($pdfPath);
 	}
 
-	private function getPdfPath($surveyId, $responseId): string
+	private function getPdfPath(int $surveyId, int $responseId): string
 	{
 		\Yii::import('application.libraries.admin.quexmlpdf', true);
 		$oSurvey = \Survey::model()->findByPk($surveyId);
@@ -247,7 +247,7 @@ class LSTelegramNotifyPlugin extends \PluginBase
 	/**
 	 * @return void
 	 */
-	public function beforeSurveySettings()
+	public function beforeSurveySettings(): void
 	{
 		$event = $this->getEvent();
 		$event->set(
@@ -367,7 +367,7 @@ class LSTelegramNotifyPlugin extends \PluginBase
 	/**
 	 * @return void
 	 */
-	public function newSurveySettings()
+	public function newSurveySettings(): void
 	{
 		$event = $this->getEvent();
 
