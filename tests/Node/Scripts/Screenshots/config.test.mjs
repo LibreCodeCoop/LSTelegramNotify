@@ -1,6 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createScreenshotConfig, normalizeBaseUrl, parseHeadless, requireEnv } from '../../../../scripts/screenshots/config.mjs';
+import {
+  buildScreenshotCommand,
+  createScreenshotConfig,
+  getEnabledScreenshotTargets,
+  normalizeBaseUrl,
+  parseHeadless,
+  parseNonNegativeFloat,
+  parseNonNegativeInteger,
+  parseScreenshotTargets,
+  requireEnv,
+} from '../../../../scripts/screenshots/config.mjs';
 
 test('normalizeBaseUrl removes trailing slashes', () => {
   assert.equal(normalizeBaseUrl('http://localhost:8080///'), 'http://localhost:8080');
@@ -10,6 +20,35 @@ test('parseHeadless only disables headless mode for explicit false', () => {
   assert.equal(parseHeadless(undefined), true);
   assert.equal(parseHeadless('true'), true);
   assert.equal(parseHeadless('false'), false);
+});
+
+test('parseScreenshotTargets enables both targets by default and can limit to preview only', () => {
+  assert.deepEqual(parseScreenshotTargets(undefined), { settings: true, preview: true });
+  assert.deepEqual(parseScreenshotTargets('preview'), { settings: false, preview: true });
+  assert.deepEqual(parseScreenshotTargets('settings, preview'), { settings: true, preview: true });
+});
+
+test('parseScreenshotTargets rejects unsupported values', () => {
+  assert.throws(
+    () => parseScreenshotTargets('preview,banana'),
+    /Unsupported SCREENSHOT_TARGETS value\(s\): banana/
+  );
+});
+
+test('getEnabledScreenshotTargets and buildScreenshotCommand keep target-specific commands readable', () => {
+  assert.deepEqual(getEnabledScreenshotTargets({ settings: true, preview: false }), ['settings']);
+  assert.deepEqual(getEnabledScreenshotTargets({ settings: true, preview: true }), ['settings', 'preview']);
+
+  assert.equal(buildScreenshotCommand('screenshots:update', { settings: true, preview: true }), 'npm run screenshots:update');
+  assert.equal(buildScreenshotCommand('screenshots:update', { settings: false, preview: true }), 'SCREENSHOT_TARGETS=preview npm run screenshots:update');
+});
+
+test('parseNonNegativeFloat and parseNonNegativeInteger validate numeric knobs', () => {
+  assert.equal(parseNonNegativeFloat('0.25', 0.1), 0.25);
+  assert.equal(parseNonNegativeInteger('12', 0), 12);
+
+  assert.throws(() => parseNonNegativeFloat('-1', 0.1), /Expected a non-negative float/);
+  assert.throws(() => parseNonNegativeInteger('1.2', 0), /Expected a non-negative integer/);
 });
 
 test('requireEnv throws when a required variable is blank', () => {
@@ -26,6 +65,9 @@ test('createScreenshotConfig composes paths and reads environment values', () =>
     LIMESURVEY_ADMIN_USER: 'admin',
     LIMESURVEY_ADMIN_PASSWORD: 'secret',
     PLAYWRIGHT_HEADLESS: 'false',
+    SCREENSHOT_PIXELMATCH_THRESHOLD: '0.2',
+    SCREENSHOT_MAX_DIFF_PIXELS: '3',
+    SCREENSHOT_MAX_DIFF_PIXEL_RATIO: '0.005',
   }, '/tmp/repo');
 
   assert.equal(config.baseUrl, 'http://localhost:8080');
@@ -34,8 +76,23 @@ test('createScreenshotConfig composes paths and reads environment values', () =>
   assert.equal(config.adminPassword, 'secret');
   assert.equal(config.headless, false);
   assert.equal(config.outputDir, '/tmp/repo/img');
+  assert.equal(config.screenshotDiffDir, '/tmp/repo/test-results/screenshots');
   assert.equal(config.settingsScreenshotPath, '/tmp/repo/img/settings.png');
   assert.equal(config.previewScreenshotPath, '/tmp/repo/img/telegram_example.png');
+  assert.deepEqual(config.targets, { settings: true, preview: true });
+  assert.equal(config.pixelmatchThreshold, 0.2);
+  assert.equal(config.maxDiffPixels, 3);
+  assert.equal(config.maxDiffPixelRatio, 0.005);
   assert.deepEqual(config.settingsViewport, { width: 1280, height: 2200 });
   assert.deepEqual(config.previewViewport, { width: 1200, height: 1400 });
+});
+
+test('createScreenshotConfig does not require admin credentials for preview-only validation', () => {
+  const config = createScreenshotConfig({
+    SCREENSHOT_TARGETS: 'preview',
+  }, '/tmp/repo');
+
+  assert.deepEqual(config.targets, { settings: false, preview: true });
+  assert.equal(config.adminUser, null);
+  assert.equal(config.adminPassword, null);
 });
