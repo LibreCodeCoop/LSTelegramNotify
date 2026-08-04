@@ -28,6 +28,11 @@ class LSTelegramNotifyPlugin extends \PluginBase
 	 * @var string[][]
 	 */
 	protected $settings = [
+		'Enable' => [
+			'type' => 'checkbox',
+			'label' => 'Enable telegram notifications',
+			'default' => true,
+		],
 		'AuthToken' => [
 			'type' => 'string',
 			'label' => 'Auth Token',
@@ -41,7 +46,7 @@ class LSTelegramNotifyPlugin extends \PluginBase
 		'ParseMode' => [
 			'type' => 'select',
 			'label' => 'Parse mode',
-			'options' => array('HTML' => 'HTML', 'Markdown'  => 'Markdown', 'MarkdownV2' => 'MarkdownV2'),
+			'options' => array('HTML' => 'HTML', 'Markdown'  => 'Markdown', 'MarkdownV2' => 'MarkdownV2', 'Text' => 'Text'),
 			'help' => 'As the Telegram bot API <a href="https://core.telegram.org/bots/api#formatting-options" target="_blank">formatting options</a>.',
 			'default' => 'HTML',
 		],
@@ -89,8 +94,18 @@ class LSTelegramNotifyPlugin extends \PluginBase
 	{
 		$event = $this->getEvent();
 		$surveyId = $event->get('surveyId');
+
+		if (!$this->isNotificationEnabled((int) $surveyId)) {
+			return;
+		}
+
 		$responseId = $event->get('responseId');
 		$oSurvey = \Survey::model()->findByPk($surveyId);
+
+		if ($oSurvey === null) {
+			return;
+		}
+
 		$chatId = $this->get(
 			'ChatId',
 			'Survey',
@@ -119,6 +134,14 @@ class LSTelegramNotifyPlugin extends \PluginBase
 		if (!$sendMessage) {
 			return;
 		}
+
+		$parseMode = (string) $this->get(
+			'ParseMode',
+			'Survey',
+			$surveyId,
+			$this->get('ParseMode')
+		);
+
 		$text = $this->renderMessageTemplate(
 			$this->get(
 				'DefaultText',
@@ -128,26 +151,36 @@ class LSTelegramNotifyPlugin extends \PluginBase
 			),
 			$surveyId,
 			$responseId,
-			$title
+			$title,
+			$parseMode
 		);
-		$telegram->sendMessage([
+
+		$request = [
 			'chat_id' => $chatId,
-			'parse_mode' => $this->get(
-				'ParseMode',
-				'Survey',
-				$surveyId,
-				$this->get('ParseMode')
-			),
 			'text' => $text
-		]);
+		];
+
+		if (!$this->isPlainTextParseMode($parseMode)) {
+			$request['parse_mode'] = $parseMode;
+		}
+
+		$telegram->sendMessage($request);
 	}
 
-	protected function renderMessageTemplate(string $template, int $surveyId, int $responseId, string $title): string
+	protected function renderMessageTemplate(string $template, int $surveyId, int $responseId, string $title, string $parseMode = ''): string
 	{
+		$placeholders = $this->getBaseTemplatePlaceholders($surveyId, $responseId, $title);
+		$fieldValues = $this->getTemplateFieldValues($surveyId, $responseId);
+
+		if ($this->shouldEscapeTemplateValues($parseMode)) {
+			$placeholders = $this->escapeTemplatePlaceholders($placeholders);
+			$fieldValues = $this->escapeTemplateFieldValues($fieldValues);
+		}
+
 		return $this->createMessageTemplateRenderer()->render(
 			$template,
-			$this->getBaseTemplatePlaceholders($surveyId, $responseId, $title),
-			$this->getTemplateFieldValues($surveyId, $responseId)
+			$placeholders,
+			$fieldValues
 		);
 	}
 
@@ -166,8 +199,92 @@ class LSTelegramNotifyPlugin extends \PluginBase
 					'id' => $responseId,
 				]
 			),
+			'urlSurvey' => \App()->createAbsoluteUrl(
+				'/surveyAdministration/view',
+				[
+					'surveyid' => $surveyId,
+				]
+			),
+			'urlDetails' => \App()->createAbsoluteUrl(
+				'/responses/view',
+				[
+					'surveyId' => $surveyId,
+					'id' => $responseId,
+				]
+			),
+			'urlEdit' => \App()->createAbsoluteUrl(
+				"/admin/dataentry/sa/editdata/subaction/edit/surveyId/$surveyId/id/$responseId/browseLang"
+			),
+			'urlExport' => \App()->createAbsoluteUrl(
+				"/admin/export/sa/exportresults/surveyid/$surveyId/id/$responseId"
+			),
+			'urlAttachments' => \App()->createAbsoluteUrl(
+				'/responses/downloadfiles',
+				[
+					'surveyId' => $surveyId,
+					'responseIds' => $responseId,
+				]
+			),
 			'title' => $title,
 		];
+	}
+
+	protected function isNotificationEnabled(int $surveyId): bool
+	{
+		return (bool) $this->get(
+			'Enable',
+			'Survey',
+			$surveyId,
+			$this->get(
+				'Enable',
+				null,
+				null,
+				$this->settings['Enable']['default']
+			)
+		);
+	}
+
+	protected function isPlainTextParseMode(string $parseMode): bool
+	{
+		return strcasecmp($parseMode, 'Text') === 0;
+	}
+
+	protected function shouldEscapeTemplateValues(string $parseMode): bool
+	{
+		return strcasecmp($parseMode, 'HTML') === 0;
+	}
+
+	/**
+	 * @param array<string, string> $placeholders
+	 *
+	 * @return array<string, string>
+	 */
+	protected function escapeTemplatePlaceholders(array $placeholders): array
+	{
+		return array_map(function (string $value): string {
+			return $this->escapeTemplateValue($value);
+		}, $placeholders);
+	}
+
+	/**
+	 * @param array<string, array<string, string>> $fieldValues
+	 *
+	 * @return array<string, array<string, string>>
+	 */
+	protected function escapeTemplateFieldValues(array $fieldValues): array
+	{
+		foreach ($fieldValues as $fieldCode => $fieldValue) {
+			foreach ($fieldValue as $property => $value) {
+				$fieldValues[$fieldCode][$property] = $this->escapeTemplateValue($value);
+			}
+		}
+
+		return $fieldValues;
+	}
+
+	protected function escapeTemplateValue(string $value): string
+	{
+		return htmlspecialchars($value, ENT_QUOTES);
 	}
 
 	protected function createMessageTemplateRenderer(): MessageTemplateRenderer
@@ -255,13 +372,29 @@ class LSTelegramNotifyPlugin extends \PluginBase
 			[
 				'name' => get_class($this),
 				'settings' => [
+					'Enable' => [
+						'type' => $this->settings['Enable']['type'],
+						'label' => $this->settings['Enable']['label'],
+						'default' => $this->settings['Enable']['default'],
+						'current' => $this->get(
+							'Enable',
+							'Survey',
+							$event->get('survey'),
+							$this->get(
+								'Enable',
+								null,
+								null,
+								$this->settings['Enable']['default']
+							)
+						),
+					],
 					'SettingsInfo' => [
 						'type' => 'info',
 						'content' => '<legend><small>Telegram settings</small></legend>'
 					],
 					'AuthToken' => [
 						'type' => 'string',
-						'label' => $this->settings['AuthToken']['help'],
+						'label' => $this->settings['AuthToken']['label'],
 						'help' => $this->settings['AuthToken']['help'],
 						'current' => $this->get(
 							'AuthToken',
