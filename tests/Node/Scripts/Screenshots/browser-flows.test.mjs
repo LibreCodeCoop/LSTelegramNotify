@@ -1,6 +1,21 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { getPluginManagerPageUrl, shouldIgnorePageErrorMessage } from '../../../../scripts/screenshots/browser-flows.mjs';
+import {
+  buildPluginInstallInputSelector,
+  buildPluginActionSelector,
+  extractPluginInstallRequest,
+  getPluginManagerPageUrl,
+  getPluginManagerScanFilesUrl,
+  isPluginActionDisabled,
+  shouldIgnorePageErrorMessage,
+} from '../../../../scripts/screenshots/browser-flows.mjs';
+
+test('getPluginManagerScanFilesUrl points to the scan-files action', () => {
+  assert.equal(
+    getPluginManagerScanFilesUrl('http://localhost:8080'),
+    'http://localhost:8080/index.php/admin/pluginmanager?sa=scanFiles'
+  );
+});
 
 test('getPluginManagerPageUrl uses the friendly route for the first plugin manager page', () => {
   assert.equal(
@@ -11,6 +26,64 @@ test('getPluginManagerPageUrl uses the friendly route for the first plugin manag
     getPluginManagerPageUrl('http://localhost:8080', 3),
     'http://localhost:8080/index.php/admin/pluginmanager?sa=index&page=3'
   );
+});
+
+test('buildPluginInstallInputSelector targets the install form entry for the scanned plugin name', () => {
+  assert.equal(
+    buildPluginInstallInputSelector('LSTelegramNotify'),
+    'input[name="pluginName"][value="LSTelegramNotify"]'
+  );
+});
+
+test('extractPluginInstallRequest reads the install action and csrf token from scan HTML', () => {
+  const scanHtml = `
+    <div class="mb-3 col-12">
+      <label class="form-label col-md-4">LSTelegramNotify</label>
+      <form style="display: inline-block;" action="/index.php/admin/pluginmanager?sa=installPluginFromFile" method="post">
+        <input type="hidden" value="csrf-double" name="YII_CSRF_TOKEN" />
+        <input type='hidden' name='pluginName' value='LSTelegramNotify'/>
+        <button class="btn btn-primary">Install</button>
+      </form>
+    </div>
+  `;
+
+  assert.deepEqual(extractPluginInstallRequest(scanHtml, 'LSTelegramNotify'), {
+    actionPath: '/index.php/admin/pluginmanager?sa=installPluginFromFile',
+    form: {
+      YII_CSRF_TOKEN: 'csrf-double',
+      pluginName: 'LSTelegramNotify',
+    },
+  });
+});
+
+test('extractPluginInstallRequest supports reversed attribute order and single quotes', () => {
+  const scanHtml = `
+    <form action='/index.php/admin/pluginmanager?sa=installPluginFromFile' method='post'>
+      <input value='csrf-single' name='YII_CSRF_TOKEN' type='hidden'>
+      <input value='LSTelegramNotify' name='pluginName' type='hidden'>
+      <button>Install</button>
+    </form>
+  `;
+
+  assert.deepEqual(extractPluginInstallRequest(scanHtml, 'LSTelegramNotify'), {
+    actionPath: '/index.php/admin/pluginmanager?sa=installPluginFromFile',
+    form: {
+      YII_CSRF_TOKEN: 'csrf-single',
+      pluginName: 'LSTelegramNotify',
+    },
+  });
+});
+
+test('buildPluginActionSelector targets the plugin action entry for the given plugin id', () => {
+  assert.equal(
+    buildPluginActionSelector('activate', 18),
+    'a[data-post-url*="pluginmanager?sa=activate"][data-post-datas=\'{"pluginId":18}\']'
+  );
+});
+
+test('isPluginActionDisabled detects the disabled dropdown class', () => {
+  assert.equal(isPluginActionDisabled('dropdown-item disabled '), true);
+  assert.equal(isPluginActionDisabled('dropdown-item'), false);
 });
 
 test('shouldIgnorePageErrorMessage filters the known CKEditor language error only', () => {
