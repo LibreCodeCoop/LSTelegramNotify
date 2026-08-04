@@ -1,0 +1,13 @@
+{
+  "name": "lstelegramnotify-maintenance",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "playwright:install": "playwright install chromium",
+    "screenshots:update": "node ./scripts/update-screenshots.mjs"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.5",
+    "playwright": "^1.54.2"
+  }
+}
