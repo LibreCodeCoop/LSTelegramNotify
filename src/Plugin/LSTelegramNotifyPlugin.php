@@ -7,9 +7,6 @@ use LibreCodeCoop\LSTelegramNotify\Template\MessageTemplateRenderer;
 use Telegram\Bot\Api;
 use Telegram\Bot\FileUpload\InputFile;
 
-require_once dirname(__DIR__) . '/Survey/SurveyFieldValueProvider.php';
-require_once dirname(__DIR__) . '/Template/MessageTemplateRenderer.php';
-
 class LSTelegramNotifyPlugin extends \PluginBase
 {
 	/**
