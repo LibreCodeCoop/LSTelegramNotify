@@ -1,0 +1,31 @@
+services:
+  limesurvey:
+    image: martialblog/limesurvey@sha256:4bfa6cac546fc95de6b26dc9afe118814df7941ebdec3f902f18cfbcd1478452
+    depends_on:
+      - lime-db
+    environment:
+      DB_HOST: lime-db
+      DB_PORT: '3306'
+      DB_NAME: limesurvey
+      DB_USERNAME: limesurvey
+      DB_PASSWORD: limesurvey
+      ADMIN_USER: admin
+      ADMIN_NAME: admin
+      ADMIN_EMAIL: admin@example.com
+      ADMIN_PASSWORD: admin
+      PUBLIC_URL: 'http://127.0.0.1:${LIMESURVEY_HOST_PORT:-18080}'
+      BASE_URL: 'http://127.0.0.1:${LIMESURVEY_HOST_PORT:-18080}'
+      URL_FORMAT: path
+      SHOW_SCRIPT_NAME: 'true'
+    ports:
+      - '${LIMESURVEY_HOST_PORT:-18080}:8080'
+    volumes:
+      - ../../:/var/www/html/plugins/LSTelegramNotify
+
+  lime-db:
+    image: mariadb:11.4
+    environment:
+      MYSQL_USER: limesurvey
+      MYSQL_DATABASE: limesurvey
+      MYSQL_PASSWORD: limesurvey
+      MYSQL_ROOT_PASSWORD: root
