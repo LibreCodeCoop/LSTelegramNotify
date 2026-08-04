@@ -38,6 +38,10 @@ export async function login(page, { baseUrl, adminUser, adminPassword }) {
   }
 }
 
+export function getPluginManagerScanFilesUrl(baseUrl) {
+  return `${baseUrl}/index.php/admin/pluginmanager?sa=scanFiles`;
+}
+
 export function getPluginManagerPageUrl(baseUrl, pageNumber) {
   if (pageNumber === 1) {
     return `${baseUrl}/index.php/admin/pluginmanager/sa/index`;
@@ -46,7 +50,60 @@ export function getPluginManagerPageUrl(baseUrl, pageNumber) {
   return `${baseUrl}/index.php/admin/pluginmanager?sa=index&page=${pageNumber}`;
 }
 
-export async function findPluginConfigureUrl(page, { baseUrl, pluginName, maxPages = 10 }) {
+function escapeCssAttributeValue(value) {
+  return String(value)
+    .replaceAll('\\', '\\\\')
+    .replaceAll('"', '\\"');
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export function buildPluginInstallInputSelector(pluginName) {
+  return `input[name="pluginName"][value="${escapeCssAttributeValue(pluginName)}"]`;
+}
+
+export function extractPluginInstallRequest(scanHtml, pluginName) {
+  const escapedPluginName = escapeRegExp(pluginName);
+  const formMatch = scanHtml.match(new RegExp(
+    `<form[^>]+action=['"]([^'"]*pluginmanager\\?sa=installPluginFromFile)['"][\\s\\S]*?(?:<input[^>]+(?:name=['"]pluginName['"][^>]+value=['"]${escapedPluginName}['"]|value=['"]${escapedPluginName}['"][^>]+name=['"]pluginName['"])[^>]*>)[\\s\\S]*?<\\/form>`,
+    'i'
+  ));
+
+  if (!formMatch) {
+    return null;
+  }
+
+  const [formHtml, actionPath] = formMatch;
+  const csrfMatch = formHtml.match(/<input[^>]+(?:name=['"]YII_CSRF_TOKEN['"][^>]+value=['"]([^'"]+)['"]|value=['"]([^'"]+)['"][^>]+name=['"]YII_CSRF_TOKEN['"])[^>]*>/i);
+  const csrfToken = csrfMatch?.[1] || csrfMatch?.[2] || null;
+
+  if (!csrfToken) {
+    return null;
+  }
+
+  return {
+    actionPath,
+    form: {
+      YII_CSRF_TOKEN: csrfToken,
+      pluginName,
+    },
+  };
+}
+
+export function buildPluginActionSelector(action, pluginId) {
+  return `a[data-post-url*="pluginmanager?sa=${action}"][data-post-datas='${JSON.stringify({ pluginId })}']`;
+}
+
+export function isPluginActionDisabled(className) {
+  return String(className ?? '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .includes('disabled');
+}
+
+async function findPlugin(page, { baseUrl, pluginName, maxPages = 10 }) {
   for (let pageNumber = 1; pageNumber <= maxPages; pageNumber += 1) {
     await page.goto(getPluginManagerPageUrl(baseUrl, pageNumber), { waitUntil: 'networkidle' });
 
@@ -56,27 +113,160 @@ export async function findPluginConfigureUrl(page, { baseUrl, pluginName, maxPag
       continue;
     }
 
+    const pluginId = await pluginRow.getAttribute('data-id');
     const configureLink = pluginRow.locator('a[href*="pluginmanager?sa=configure"]').first();
+    const hasConfigureLink = await configureLink.count() > 0;
+    const href = hasConfigureLink ? await configureLink.getAttribute('href') : null;
 
-    if (await configureLink.count() === 0) {
-      throw new Error(`Found ${pluginName}, but it has no configure link. Check whether it is active and load-error free.`);
-    }
-
-    const href = await configureLink.getAttribute('href');
-
-    if (!href) {
-      throw new Error(`Could not read the configure link for ${pluginName}.`);
-    }
-
-    return new URL(href, baseUrl).toString();
+    return {
+      row: pluginRow,
+      pluginId: pluginId ? Number(pluginId) : null,
+      configureUrl: href ? new URL(href, baseUrl).toString() : null,
+    };
   }
 
-  throw new Error(`Could not find ${pluginName} in the LimeSurvey plugin manager.`);
+  return null;
+}
+
+async function installPluginFromScanResults(page, { baseUrl, pluginName }) {
+  const scanResponse = await page.context().request.get(getPluginManagerScanFilesUrl(baseUrl));
+  const scanHtml = await scanResponse.text();
+  const installRequest = extractPluginInstallRequest(scanHtml, pluginName);
+
+  if (!installRequest) {
+    return false;
+  }
+
+  await page.context().request.post(new URL(installRequest.actionPath, baseUrl).toString(), {
+    form: installRequest.form,
+  });
+
+  return true;
+}
+
+async function openPluginActions(row) {
+  const dropdownToggle = row.locator('button.ls-dropdown-toggle').first();
+
+  await dropdownToggle.scrollIntoViewIfNeeded();
+  await dropdownToggle.click({ force: true });
+}
+
+async function getPluginAction(page, action, pluginId) {
+  return page.evaluate(({ expectedAction, expectedPluginId }) => {
+    const expectedPostData = JSON.stringify({ pluginId: expectedPluginId });
+
+    const actionLink = Array.from(document.querySelectorAll('a[data-post-url]')).find((link) => {
+      const postUrl = link.getAttribute('data-post-url') || '';
+      const postDatas = link.getAttribute('data-post-datas') || '';
+
+      return postUrl.includes(`pluginmanager?sa=${expectedAction}`) && postDatas === expectedPostData;
+    });
+
+    if (!actionLink) {
+      return null;
+    }
+
+    return {
+      className: actionLink.className,
+      text: actionLink.textContent || '',
+    };
+  }, {
+    expectedAction: action,
+    expectedPluginId: pluginId,
+  });
+}
+
+async function triggerPluginAction(page, action, pluginId) {
+  await page.evaluate(({ expectedAction, expectedPluginId }) => {
+    const expectedPostData = JSON.stringify({ pluginId: expectedPluginId });
+
+    const actionLink = Array.from(document.querySelectorAll('a[data-post-url]')).find((link) => {
+      const postUrl = link.getAttribute('data-post-url') || '';
+      const postDatas = link.getAttribute('data-post-datas') || '';
+
+      return postUrl.includes(`pluginmanager?sa=${expectedAction}`) && postDatas === expectedPostData;
+    });
+
+    if (!actionLink) {
+      throw new Error(`Missing plugin action link for action ${expectedAction} and plugin id ${expectedPluginId}.`);
+    }
+
+    actionLink.click();
+  }, {
+    expectedAction: action,
+    expectedPluginId: pluginId,
+  });
+
+  const confirmButton = page.locator('#actionBtn');
+
+  const confirmModalVisible = await confirmButton.waitFor({ state: 'visible', timeout: 1000 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (confirmModalVisible) {
+    await confirmButton.click({ force: true });
+    await page.locator('#confirmation-modal').waitFor({ state: 'hidden' });
+  }
+
+  await page.waitForLoadState('networkidle');
+}
+
+export async function ensurePluginConfigureUrl(page, { baseUrl, pluginName, maxPages = 10 }) {
+  let plugin = await findPlugin(page, { baseUrl, pluginName, maxPages });
+
+  if (!plugin) {
+    await installPluginFromScanResults(page, { baseUrl, pluginName });
+    plugin = await findPlugin(page, { baseUrl, pluginName, maxPages });
+  }
+
+  if (!plugin) {
+    throw new Error(`Could not find ${pluginName} in the LimeSurvey plugin manager even after scanning plugin files.`);
+  }
+
+  if (!plugin.pluginId) {
+    throw new Error(`Could not determine the plugin id for ${pluginName}.`);
+  }
+
+  await openPluginActions(plugin.row);
+
+  const resetLoadErrorAction = await getPluginAction(page, 'resetLoadError', plugin.pluginId);
+
+  if (resetLoadErrorAction) {
+    await triggerPluginAction(page, 'resetLoadError', plugin.pluginId);
+    plugin = await findPlugin(page, { baseUrl, pluginName, maxPages });
+
+    if (!plugin) {
+      throw new Error(`Reloaded ${pluginName}, but could not find it again in the plugin manager.`);
+    }
+
+    await openPluginActions(plugin.row);
+  }
+
+  const activateAction = await getPluginAction(page, 'activate', plugin.pluginId);
+  const activateActionClassName = activateAction?.className;
+
+  if (activateAction && !isPluginActionDisabled(activateActionClassName)) {
+    await triggerPluginAction(page, 'activate', plugin.pluginId);
+    plugin = await findPlugin(page, { baseUrl, pluginName, maxPages });
+
+    if (!plugin) {
+      throw new Error(`Activated ${pluginName}, but could not find it again in the plugin manager.`);
+    }
+  }
+
+  if (!plugin.configureUrl) {
+    throw new Error(`Found ${pluginName}, but it has no configure link. Check whether it is load-error free.`);
+  }
+
+  return plugin.configureUrl;
+}
+
+export async function findPluginConfigureUrl(page, { baseUrl, pluginName, maxPages = 10 }) {
+  return ensurePluginConfigureUrl(page, { baseUrl, pluginName, maxPages });
 }
 
 export async function captureSettingsScreenshot(page, {
   configureUrl,
-  settingsScreenshotPath,
   pluginName,
   maskedSettingsValues,
   viewport,
@@ -99,11 +289,19 @@ export async function captureSettingsScreenshot(page, {
   const settingsForm = page.locator(`#pluginsettings-${pluginName}`);
 
   await defaultTextField.scrollIntoViewIfNeeded();
-  await settingsForm.screenshot({ path: settingsScreenshotPath });
+  return settingsForm.screenshot({
+    animations: 'disabled',
+    caret: 'hide',
+    scale: 'css',
+  });
 }
 
-export async function captureTelegramPreview(page, { previewScreenshotPath, viewport }) {
+export async function captureTelegramPreview(page, { viewport }) {
   await page.setViewportSize({ ...viewport });
   await page.setContent(await buildTelegramPreviewHtml(), { waitUntil: 'load' });
-  await page.locator('.preview-shell').screenshot({ path: previewScreenshotPath });
+  return page.locator('.preview-shell').screenshot({
+    animations: 'disabled',
+    caret: 'hide',
+    scale: 'css',
+  });
 }
