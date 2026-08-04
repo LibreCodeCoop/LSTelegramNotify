@@ -15,6 +15,9 @@ class LSTelegramNotifyPluginTest extends TestCase
     {
         \Survey::$findByPkHandler = null;
         \AppRuntimeMock::$createAbsoluteUrlHandler = null;
+        \FieldMapRuntimeMock::$createFieldMapHandler = null;
+        \viewHelper::$getFieldTextHandler = null;
+        \viewHelper::$getFieldCodeHandler = null;
     }
 
     public function testInitSubscribesToRequiredPluginEvents(): void
@@ -26,6 +29,15 @@ class LSTelegramNotifyPluginTest extends TestCase
         $this->assertSame(
             ['newSurveySettings', 'afterSurveyComplete', 'beforeSurveySettings'],
             $plugin->getSubscribedEvents()
+        );
+
+        $this->assertStringContainsString(
+            '{{field:FIELD_CODE.answer}}',
+            $plugin->getSettingsDefinition()['DefaultText']['help']
+        );
+        $this->assertStringContainsString(
+            'survey-specific plugin settings',
+            $plugin->getSettingsDefinition()['DefaultText']['help']
         );
     }
 
@@ -312,6 +324,18 @@ class LSTelegramNotifyPluginTest extends TestCase
             'DefaultText' => 'Mensagem padrão',
         ]);
 
+        \Survey::$findByPkHandler = static fn (int $id) => (object) ['language' => 'pt-BR'];
+        \FieldMapRuntimeMock::$createFieldMapHandler = static fn ($survey, $style, $full, $flatten, $language): array => [
+            '12345X1X1' => ['name' => 'email-field'],
+            '12345X1X2' => ['name' => 'name-field'],
+        ];
+        \viewHelper::$getFieldCodeHandler = static function (array $field, array $options): string {
+            return $field['name'] === 'email-field' ? 'CONTATO[EMAIL]' : 'NOME';
+        };
+        \viewHelper::$getFieldTextHandler = static function (array $field, array $options): string {
+            return $field['name'] === 'email-field' ? 'E-mail para contato' : 'Nome completo';
+        };
+
         $event = $this->newEvent([
             'survey' => 77,
         ]);
@@ -334,6 +358,11 @@ class LSTelegramNotifyPluginTest extends TestCase
         $this->assertFalse($definition['settings']['SendCsv']['current']);
         $this->assertFalse($definition['settings']['SendMessage']['current']);
         $this->assertSame('Mensagem padrão', $definition['settings']['DefaultText']['current']);
+        $this->assertStringContainsString('{{urlAttachments}}', $definition['settings']['DefaultText']['help']);
+        $this->assertStringContainsString('{{FIELD_CODE_answer}}', $definition['settings']['DefaultText']['help']);
+        $this->assertStringContainsString('CONTATO[EMAIL]', $definition['settings']['DefaultText']['help']);
+        $this->assertStringContainsString('E-mail para contato', $definition['settings']['DefaultText']['help']);
+        $this->assertStringContainsString('NOME', $definition['settings']['DefaultText']['help']);
     }
 
     public function testNewSurveySettingsPersistsEachIncomingSurveySetting(): void
@@ -373,9 +402,12 @@ class LSTelegramNotifyPluginTest extends TestCase
         ], $plugin->getSavedSettings());
     }
 
-    private function newPlugin(): LSTelegramNotifyPluginDouble
+    private function newPlugin(): \LSTelegramNotifyPluginDouble
     {
-        return (new \ReflectionClass(LSTelegramNotifyPluginDouble::class))->newInstanceWithoutConstructor();
+        /** @var \LSTelegramNotifyPluginDouble $plugin */
+        $plugin = (new \ReflectionClass(\LSTelegramNotifyPluginDouble::class))->newInstanceWithoutConstructor();
+
+        return $plugin;
     }
 
     private function newEvent(array $values): object
