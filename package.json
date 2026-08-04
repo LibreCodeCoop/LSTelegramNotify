@@ -5,10 +5,13 @@
   "scripts": {
     "playwright:install": "playwright install chromium",
     "screenshots:test": "node --test tests/Node/Scripts/Screenshots/*.test.mjs",
+    "screenshots:check": "node ./scripts/check-screenshots.mjs",
     "screenshots:update": "node ./scripts/update-screenshots.mjs"
   },
   "devDependencies": {
     "dotenv": "^16.4.5",
-    "playwright": "^1.62.1"
+    "pixelmatch": "^7.1.0",
+    "playwright": "^1.62.1",
+    "pngjs": "^7.0.0"
   }
 }
