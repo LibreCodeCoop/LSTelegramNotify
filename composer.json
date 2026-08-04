@@ -25,11 +25,13 @@
     "scripts": {
         "tools:install": [
             "@composer bin phpunit install --ansi --no-interaction",
-            "@composer bin php-cs-fixer install --ansi --no-interaction"
+            "@composer bin php-cs-fixer install --ansi --no-interaction",
+            "@composer bin psalm install --ansi --no-interaction"
         ],
         "test:unit": "vendor-bin/phpunit/vendor/bin/phpunit -c phpunit.xml",
         "cs:check": "vendor-bin/php-cs-fixer/vendor/bin/php-cs-fixer fix --dry-run --diff",
         "cs:fix": "vendor-bin/php-cs-fixer/vendor/bin/php-cs-fixer fix",
+        "psalm": "vendor-bin/psalm/vendor/bin/psalm --config=psalm.xml",
         "lint": "find . -type d \\( -path './vendor' -o -path './vendor-bin' -o -path './node_modules' \\) -prune -o -type f -name '*.php' -print0 | xargs -0 -n1 php -l",
         "post-install-cmd": [
             "@tools:install"
