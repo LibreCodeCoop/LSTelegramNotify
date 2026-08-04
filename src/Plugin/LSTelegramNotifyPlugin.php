@@ -26,7 +26,7 @@ class LSTelegramNotifyPlugin extends \PluginBase
 	protected $storage = 'DbStorage';
 
 	/**
-	 * @var string[][]
+	 * @var array<string, array<string, mixed>>
 	 */
 	protected $settings = [
 		'Enable' => [
@@ -348,26 +348,41 @@ class LSTelegramNotifyPlugin extends \PluginBase
 		if (!$sendCsv) {
 			return;
 		}
-		$pdfPath = $this->getCsv($surveyId, $responseId);
-		$inputFile = new InputFile($pdfPath, "$surveyId-$responseId.csv");
+		$csvPath = $this->getCsv($surveyId);
+		$inputFile = new InputFile($csvPath, "$surveyId-$responseId.csv");
 		$telegram->sendDocument([
 			'chat_id' => $chatId,
 			'document' => $inputFile,
 		]);
-		unlink($pdfPath);
+		unlink($csvPath);
 	}
 
 	private function getPdfPath(int $surveyId, int $responseId): string
 	{
 		\Yii::import('application.libraries.admin.quexmlpdf', true);
 		$oSurvey = \Survey::model()->findByPk($surveyId);
+
+		if ($oSurvey === null) {
+			throw new \RuntimeException('Survey not found.');
+		}
+
 		$quexmlpdf = new \quexmlpdf();
 		set_time_limit(120);
 		\App()->loadHelper('export');
-		$quexml = \quexml_export($surveyId, current($oSurvey->allLanguages), $responseId);
+		$language = current($oSurvey->allLanguages);
+
+		if ($language === false || !is_string($language) || $language === '') {
+			$language = $oSurvey->language;
+		}
+
+		$quexml = \quexml_export($surveyId, $language, $responseId);
 		$quexmlpdf->create($quexmlpdf->createqueXML($quexml));
 
 		$tempnam = tempnam(sys_get_temp_dir(), 'pdf_');
+
+		if ($tempnam === false) {
+			throw new \RuntimeException('Could not create temporary PDF file.');
+		}
 
 		$quexmlpdf->Output($tempnam, 'F');
 		return $tempnam;
@@ -524,15 +539,22 @@ class LSTelegramNotifyPlugin extends \PluginBase
 		}
 	}
 
-	private function getCsv(): string
+	private function getCsv(int $surveyId): string
 	{
 		\Yii::import('application.helpers.admin.export.FormattingOptions', true);
 		\Yii::import('application.helpers.admin.exportresults_helper', true);
-		$survey = \Survey::model()->findByPk($this->getEvent()->get('surveyId'));
-		if (!(\SurveyDynamic::model($this->getEvent()->get('surveyId'))->getMaxId())) {
+		$survey = \Survey::model()->findByPk($surveyId);
+
+		if ($survey === null) {
+			throw new \RuntimeException('Survey not found.');
+		}
+
+		$maxId = \SurveyDynamic::model($surveyId)->getMaxId();
+
+		if ($maxId === null || $maxId < 1) {
 			throw new \Exception('No Data, could not get max id.', 1);
 		}
-		$maxId = \SurveyDynamic::model($this->getEvent()->get('surveyId'))->getMaxId();
+
 		$oFormattingOptions = new \FormattingOptions();
 		$oFormattingOptions->responseMinRecord = 1;
 		$oFormattingOptions->responseMaxRecord = $maxId;
@@ -545,6 +567,6 @@ class LSTelegramNotifyPlugin extends \PluginBase
 		$oFormattingOptions->csvFieldSeparator = ',';
 		$oFormattingOptions->output = 'file';
 		$oExport = new \ExportSurveyResultsService();
-		return $oExport->exportResponses($this->getEvent()->get('surveyId'), $survey->language, 'csv', $oFormattingOptions, '');
+		return $oExport->exportResponses($surveyId, $survey->language, 'csv', $oFormattingOptions, '');
 	}
 }
