@@ -56,11 +56,6 @@ export async function assertScreenshotsUpToDate(config, { logger = console, brow
   const failures = [];
 
   for (const screenshot of screenshots) {
-    const comparisonOptions = config.comparisonOptions?.[screenshot.key] ?? {
-      pixelmatchThreshold: config.pixelmatchThreshold,
-      maxDiffPixels: config.maxDiffPixels,
-      maxDiffPixelRatio: config.maxDiffPixelRatio,
-    };
     let expectedBuffer;
 
     try {
@@ -77,9 +72,9 @@ export async function assertScreenshotsUpToDate(config, { logger = console, brow
     }
 
     const result = comparePngBuffers(expectedBuffer, screenshot.buffer, {
-      pixelmatchThreshold: comparisonOptions.pixelmatchThreshold,
-      maxDiffPixels: comparisonOptions.maxDiffPixels,
-      maxDiffPixelRatio: comparisonOptions.maxDiffPixelRatio,
+      pixelmatchThreshold: config.pixelmatchThreshold,
+      maxDiffPixels: config.maxDiffPixels,
+      maxDiffPixelRatio: config.maxDiffPixelRatio,
     });
 
     if (result.matches) {
