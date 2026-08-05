@@ -1,0 +1,29 @@
+{
+  "name": "LSTelegramNotify",
+  "dockerComposeFile": [
+    "../docker-compose.yml",
+    "docker-compose.extend.yml"
+  ],
+  "service": "workspace",
+  "runServices": [
+    "lime-db",
+    "limesurvey",
+    "workspace"
+  ],
+  "workspaceFolder": "/workspaces/LSTelegramNotify",
+  "shutdownAction": "stopCompose",
+  "postCreateCommand": "composer install --no-interaction --prefer-dist && npm install",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "files.eol": "\n",
+        "terminal.integrated.defaultProfile.linux": "bash"
+      },
+      "extensions": [
+        "bmewburn.vscode-intelephense-client",
+        "ms-playwright.playwright",
+        "EditorConfig.EditorConfig"
+      ]
+    }
+  }
+}
