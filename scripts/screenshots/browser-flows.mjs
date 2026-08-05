@@ -4,6 +4,10 @@ export const IGNORED_PAGE_ERROR_MESSAGES = Object.freeze([
   "Cannot read properties of null (reading 'langEntries')",
 ]);
 
+const LOGIN_PATH_FRAGMENT = '/authentication/sa/login';
+const DEFAULT_LOGIN_MAX_ATTEMPTS = 3;
+const LOGIN_RETRY_DELAY_MS = 1_000;
+
 export function shouldIgnorePageErrorMessage(message) {
   return IGNORED_PAGE_ERROR_MESSAGES.some((ignoredMessage) => message.includes(ignoredMessage));
 }
@@ -20,22 +24,34 @@ export function attachPageErrorLogger(page, logger = console) {
   });
 }
 
-export async function login(page, { baseUrl, adminUser, adminPassword }) {
-  await page.goto(`${baseUrl}/index.php/admin/authentication/sa/login`, {
-    waitUntil: 'networkidle',
-  });
+export async function login(page, { baseUrl, adminUser, adminPassword, loginMaxAttempts = DEFAULT_LOGIN_MAX_ATTEMPTS }) {
+  const loginUrl = `${baseUrl}/index.php/admin/authentication/sa/login`;
 
-  await page.fill('#user', adminUser);
-  await page.fill('#password', adminPassword);
+  for (let attempt = 1; attempt <= loginMaxAttempts; attempt += 1) {
+    await page.goto(loginUrl, {
+      waitUntil: 'networkidle',
+    });
 
-  await Promise.all([
-    page.waitForLoadState('networkidle'),
-    page.getByRole('button', { name: 'Log in' }).click(),
-  ]);
+    await page.fill('#user', adminUser);
+    await page.fill('#password', adminPassword);
 
-  if (page.url().includes('/authentication/sa/login')) {
-    throw new Error('Login failed. Check LIMESURVEY_ADMIN_USER and LIMESURVEY_ADMIN_PASSWORD.');
+    await Promise.all([
+      page.waitForURL((url) => !url.toString().includes(LOGIN_PATH_FRAGMENT), { timeout: 10_000 }).catch(() => null),
+      page.getByRole('button', { name: 'Log in' }).click(),
+    ]);
+
+    await page.waitForLoadState('networkidle');
+
+    if (!page.url().includes(LOGIN_PATH_FRAGMENT)) {
+      return;
+    }
+
+    if (attempt < loginMaxAttempts) {
+      await page.waitForTimeout(LOGIN_RETRY_DELAY_MS);
+    }
   }
+
+  throw new Error('Login failed. Check LIMESURVEY_ADMIN_USER and LIMESURVEY_ADMIN_PASSWORD.');
 }
 
 export function getPluginManagerScanFilesUrl(baseUrl) {
