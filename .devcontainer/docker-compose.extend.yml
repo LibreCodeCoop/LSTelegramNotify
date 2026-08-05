@@ -1,0 +1,21 @@
+services:
+  limesurvey:
+    environment:
+      PUBLIC_URL: http://limesurvey:8080
+      BASE_URL: http://limesurvey:8080
+
+  workspace:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    depends_on:
+      - limesurvey
+    volumes:
+      - .:/workspaces/LSTelegramNotify:cached
+    working_dir: /workspaces/LSTelegramNotify
+    command: sleep infinity
+    environment:
+      LIMESURVEY_BASE_URL: http://limesurvey:8080
+      LIMESURVEY_ADMIN_USER: admin
+      LIMESURVEY_ADMIN_PASSWORD: admin
+      PLAYWRIGHT_HEADLESS: 'true'
