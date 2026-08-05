@@ -27,7 +27,7 @@ function formatScreenshotCheckError(error) {
     return [
       'Screenshot validation could not log into LimeSurvey.',
       'Check LIMESURVEY_BASE_URL, LIMESURVEY_ADMIN_USER and LIMESURVEY_ADMIN_PASSWORD.',
-      'If you want a disposable local LimeSurvey just for screenshots, use `docker compose -f scripts/screenshots/docker-compose.yml up -d --force-recreate`.',
+      'If you want a disposable local LimeSurvey just for screenshots, run `docker compose up -d --force-recreate` from the repository root.',
       `If you only need the local preview image, run \`${buildScreenshotCommand('screenshots:check', { settings: false, preview: true })}\`.`,
     ].join('\n');
   }
