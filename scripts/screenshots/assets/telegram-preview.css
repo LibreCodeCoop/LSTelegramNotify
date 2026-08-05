@@ -1,6 +1,6 @@
 :root {
   color-scheme: light;
-  font-family: sans-serif;
+  font-family: "TelegramPreviewSans", sans-serif;
 }
 
 * {
@@ -111,7 +111,7 @@ body {
 }
 
 .message-bubble code {
-  font-family: monospace;
+  font-family: "TelegramPreviewMono", monospace;
   font-size: 0.95em;
   border-radius: 8px;
   background: rgba(23, 48, 66, 0.08);
