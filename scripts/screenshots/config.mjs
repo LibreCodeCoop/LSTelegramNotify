@@ -1,6 +1,10 @@
 import path from 'node:path';
 
-export const DEFAULT_BASE_URL = 'http://localhost:8080';
+export const DEFAULT_STACK_PUBLIC_SCHEME = 'http';
+export const DEFAULT_STACK_PUBLIC_HOST = '127.0.0.1';
+export const DEFAULT_STACK_HOST_PORT = '18080';
+export const DEFAULT_STACK_ADMIN_USER = 'admin';
+export const DEFAULT_STACK_ADMIN_PASSWORD = 'admin';
 export const DEFAULT_PLUGIN_NAME = 'LSTelegramNotify';
 export const SETTINGS_VIEWPORT = Object.freeze({ width: 1280, height: 2200 });
 export const PREVIEW_VIEWPORT = Object.freeze({ width: 1200, height: 1400 });
@@ -17,10 +21,10 @@ export function createScreenshotConfig(env = process.env, repoRoot = process.cwd
     previewScreenshotPath: path.join(repoRoot, 'img', 'telegram_example.png'),
     screenshotDiffDir: path.join(repoRoot, 'test-results', 'screenshots'),
     targets,
-    baseUrl: normalizeBaseUrl(env.LIMESURVEY_BASE_URL || DEFAULT_BASE_URL),
+    baseUrl: normalizeBaseUrl(getEnvOrFallback(env, 'LIMESURVEY_BASE_URL', getDefaultBaseUrl(env))),
     pluginName: env.LIMESURVEY_PLUGIN_NAME || DEFAULT_PLUGIN_NAME,
-    adminUser: targets.settings ? requireEnv(env, 'LIMESURVEY_ADMIN_USER') : null,
-    adminPassword: targets.settings ? requireEnv(env, 'LIMESURVEY_ADMIN_PASSWORD') : null,
+    adminUser: targets.settings ? getEnvOrFallback(env, 'LIMESURVEY_ADMIN_USER', getDefaultAdminUser(env)) : null,
+    adminPassword: targets.settings ? getEnvOrFallback(env, 'LIMESURVEY_ADMIN_PASSWORD', getDefaultAdminPassword(env)) : null,
     headless: parseHeadless(env.PLAYWRIGHT_HEADLESS),
     pixelmatchThreshold: parseNonNegativeFloat(env.SCREENSHOT_PIXELMATCH_THRESHOLD, 0.1),
     maxDiffPixels: parseNonNegativeInteger(env.SCREENSHOT_MAX_DIFF_PIXELS, 0),
@@ -38,6 +42,32 @@ export function requireEnv(env, name) {
   }
 
   return value;
+}
+
+export function getEnvOrFallback(env, name, fallback) {
+  const value = env[name];
+
+  if (value === undefined || value === null || String(value).trim() === '') {
+    return fallback;
+  }
+
+  return String(value).trim();
+}
+
+export function getDefaultBaseUrl(env) {
+  const scheme = getEnvOrFallback(env, 'LIMESURVEY_STACK_PUBLIC_SCHEME', DEFAULT_STACK_PUBLIC_SCHEME);
+  const host = getEnvOrFallback(env, 'LIMESURVEY_STACK_PUBLIC_HOST', DEFAULT_STACK_PUBLIC_HOST);
+  const port = getEnvOrFallback(env, 'LIMESURVEY_STACK_HOST_PORT', DEFAULT_STACK_HOST_PORT);
+
+  return `${scheme}://${host}:${port}`;
+}
+
+export function getDefaultAdminUser(env) {
+  return getEnvOrFallback(env, 'LIMESURVEY_STACK_ADMIN_USER', DEFAULT_STACK_ADMIN_USER);
+}
+
+export function getDefaultAdminPassword(env) {
+  return getEnvOrFallback(env, 'LIMESURVEY_STACK_ADMIN_PASSWORD', DEFAULT_STACK_ADMIN_PASSWORD);
 }
 
 export function normalizeBaseUrl(url) {
