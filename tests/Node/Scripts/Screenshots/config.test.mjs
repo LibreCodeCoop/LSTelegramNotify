@@ -3,11 +3,13 @@ import test from 'node:test';
 import {
   buildScreenshotCommand,
   createScreenshotConfig,
+  DEFAULT_PREVIEW_MAX_DIFF_PIXEL_RATIO,
   getDefaultAdminPassword,
   getDefaultAdminUser,
   getDefaultBaseUrl,
   getEnabledScreenshotTargets,
   getEnvOrFallback,
+  getScreenshotComparisonOptions,
   normalizeBaseUrl,
   parseHeadless,
   parseNonNegativeFloat,
@@ -107,6 +109,16 @@ test('createScreenshotConfig composes paths and reads environment values', () =>
   assert.equal(config.pixelmatchThreshold, 0.2);
   assert.equal(config.maxDiffPixels, 3);
   assert.equal(config.maxDiffPixelRatio, 0.005);
+  assert.deepEqual(config.comparisonOptions.settings, {
+    pixelmatchThreshold: 0.2,
+    maxDiffPixels: 3,
+    maxDiffPixelRatio: 0.005,
+  });
+  assert.deepEqual(config.comparisonOptions.preview, {
+    pixelmatchThreshold: 0.2,
+    maxDiffPixels: 3,
+    maxDiffPixelRatio: 0.005,
+  });
   assert.deepEqual(config.settingsViewport, { width: 1280, height: 2200 });
   assert.deepEqual(config.previewViewport, { width: 1200, height: 1400 });
 });
@@ -119,6 +131,8 @@ test('createScreenshotConfig uses the local compose defaults for settings valida
   assert.equal(config.adminUser, 'admin');
   assert.equal(config.adminPassword, 'admin');
   assert.equal(config.headless, true);
+  assert.equal(config.comparisonOptions.settings.maxDiffPixelRatio, 0);
+  assert.equal(config.comparisonOptions.preview.maxDiffPixelRatio, DEFAULT_PREVIEW_MAX_DIFF_PIXEL_RATIO);
 });
 
 test('createScreenshotConfig does not require admin credentials for preview-only validation', () => {
@@ -129,4 +143,22 @@ test('createScreenshotConfig does not require admin credentials for preview-only
   assert.deepEqual(config.targets, { settings: false, preview: true });
   assert.equal(config.adminUser, null);
   assert.equal(config.adminPassword, null);
+});
+
+test('getScreenshotComparisonOptions lets preview override its own drift budget', () => {
+  const comparisonOptions = getScreenshotComparisonOptions({
+    SCREENSHOT_PIXELMATCH_THRESHOLD: '0.1',
+    PREVIEW_SCREENSHOT_MAX_DIFF_PIXEL_RATIO: '0.0025',
+  });
+
+  assert.deepEqual(comparisonOptions.settings, {
+    pixelmatchThreshold: 0.1,
+    maxDiffPixels: 0,
+    maxDiffPixelRatio: 0,
+  });
+  assert.deepEqual(comparisonOptions.preview, {
+    pixelmatchThreshold: 0.1,
+    maxDiffPixels: 0,
+    maxDiffPixelRatio: 0.0025,
+  });
 });
