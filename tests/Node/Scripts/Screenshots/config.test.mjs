@@ -3,7 +3,11 @@ import test from 'node:test';
 import {
   buildScreenshotCommand,
   createScreenshotConfig,
+  getDefaultAdminPassword,
+  getDefaultAdminUser,
+  getDefaultBaseUrl,
   getEnabledScreenshotTargets,
+  getEnvOrFallback,
   normalizeBaseUrl,
   parseHeadless,
   parseNonNegativeFloat,
@@ -58,6 +62,26 @@ test('requireEnv throws when a required variable is blank', () => {
   );
 });
 
+test('getEnvOrFallback returns the explicit value when present and the fallback otherwise', () => {
+  assert.equal(getEnvOrFallback({ FOO: 'bar' }, 'FOO', 'baz'), 'bar');
+  assert.equal(getEnvOrFallback({ FOO: '   ' }, 'FOO', 'baz'), 'baz');
+  assert.equal(getEnvOrFallback({}, 'FOO', 'baz'), 'baz');
+});
+
+test('getDefaultBaseUrl and default admin credentials follow the compose defaults and overrides', () => {
+  assert.equal(getDefaultBaseUrl({}), 'http://127.0.0.1:18080');
+  assert.equal(getDefaultAdminUser({}), 'admin');
+  assert.equal(getDefaultAdminPassword({}), 'admin');
+
+  assert.equal(getDefaultBaseUrl({
+    LIMESURVEY_STACK_PUBLIC_SCHEME: 'https',
+    LIMESURVEY_STACK_PUBLIC_HOST: 'example.test',
+    LIMESURVEY_STACK_HOST_PORT: '19443',
+  }), 'https://example.test:19443');
+  assert.equal(getDefaultAdminUser({ LIMESURVEY_STACK_ADMIN_USER: 'alice' }), 'alice');
+  assert.equal(getDefaultAdminPassword({ LIMESURVEY_STACK_ADMIN_PASSWORD: 'secret' }), 'secret');
+});
+
 test('createScreenshotConfig composes paths and reads environment values', () => {
   const config = createScreenshotConfig({
     LIMESURVEY_BASE_URL: 'http://localhost:8080/',
@@ -85,6 +109,16 @@ test('createScreenshotConfig composes paths and reads environment values', () =>
   assert.equal(config.maxDiffPixelRatio, 0.005);
   assert.deepEqual(config.settingsViewport, { width: 1280, height: 2200 });
   assert.deepEqual(config.previewViewport, { width: 1200, height: 1400 });
+});
+
+test('createScreenshotConfig uses the local compose defaults for settings validation when no explicit env is provided', () => {
+  const config = createScreenshotConfig({}, '/tmp/repo');
+
+  assert.equal(config.baseUrl, 'http://127.0.0.1:18080');
+  assert.equal(config.pluginName, 'LSTelegramNotify');
+  assert.equal(config.adminUser, 'admin');
+  assert.equal(config.adminPassword, 'admin');
+  assert.equal(config.headless, true);
 });
 
 test('createScreenshotConfig does not require admin credentials for preview-only validation', () => {
