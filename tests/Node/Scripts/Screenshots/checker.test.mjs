@@ -72,6 +72,22 @@ test('comparePngBuffers can tolerate a small pixel delta', () => {
   assert.equal(result.diffPixels, 1);
 });
 
+test('comparePngBuffers can tolerate a small diff ratio', () => {
+  const expectedBuffer = createPngBuffer(10, 10, Array.from({ length: 100 }, () => [255, 255, 255, 255]));
+  const actualPixels = Array.from({ length: 100 }, (_, index) => (index === 0
+    ? [255, 0, 0, 255]
+    : [255, 255, 255, 255]));
+  const actualBuffer = createPngBuffer(10, 10, actualPixels);
+
+  const result = comparePngBuffers(expectedBuffer, actualBuffer, {
+    pixelmatchThreshold: 0,
+    maxDiffPixelRatio: 0.02,
+  });
+
+  assert.equal(result.matches, true);
+  assert.equal(result.diffPixels, 1);
+});
+
 test('comparePngBuffers fails when image dimensions differ', () => {
   const expectedBuffer = createPngBuffer(1, 1, [
     [255, 255, 255, 255],
