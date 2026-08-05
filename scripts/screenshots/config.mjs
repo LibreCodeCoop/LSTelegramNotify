@@ -6,6 +6,7 @@ export const DEFAULT_STACK_HOST_PORT = '18080';
 export const DEFAULT_STACK_ADMIN_USER = 'admin';
 export const DEFAULT_STACK_ADMIN_PASSWORD = 'admin';
 export const DEFAULT_PLUGIN_NAME = 'LSTelegramNotify';
+export const DEFAULT_PREVIEW_MAX_DIFF_PIXEL_RATIO = 0.005;
 export const SETTINGS_VIEWPORT = Object.freeze({ width: 1280, height: 2200 });
 export const PREVIEW_VIEWPORT = Object.freeze({ width: 1200, height: 1400 });
 export const DEFAULT_SCREENSHOT_TARGETS = Object.freeze(['settings', 'preview']);
@@ -13,6 +14,7 @@ export const VALID_SCREENSHOT_TARGETS = new Set(DEFAULT_SCREENSHOT_TARGETS);
 
 export function createScreenshotConfig(env = process.env, repoRoot = process.cwd()) {
   const targets = parseScreenshotTargets(env.SCREENSHOT_TARGETS);
+  const comparisonOptions = getScreenshotComparisonOptions(env);
 
   return {
     repoRoot,
@@ -26,12 +28,37 @@ export function createScreenshotConfig(env = process.env, repoRoot = process.cwd
     adminUser: targets.settings ? getEnvOrFallback(env, 'LIMESURVEY_ADMIN_USER', getDefaultAdminUser(env)) : null,
     adminPassword: targets.settings ? getEnvOrFallback(env, 'LIMESURVEY_ADMIN_PASSWORD', getDefaultAdminPassword(env)) : null,
     headless: parseHeadless(env.PLAYWRIGHT_HEADLESS),
-    pixelmatchThreshold: parseNonNegativeFloat(env.SCREENSHOT_PIXELMATCH_THRESHOLD, 0.1),
-    maxDiffPixels: parseNonNegativeInteger(env.SCREENSHOT_MAX_DIFF_PIXELS, 0),
-    maxDiffPixelRatio: parseNonNegativeFloat(env.SCREENSHOT_MAX_DIFF_PIXEL_RATIO, 0),
+    pixelmatchThreshold: comparisonOptions.settings.pixelmatchThreshold,
+    maxDiffPixels: comparisonOptions.settings.maxDiffPixels,
+    maxDiffPixelRatio: comparisonOptions.settings.maxDiffPixelRatio,
+    comparisonOptions,
     settingsViewport: SETTINGS_VIEWPORT,
     previewViewport: PREVIEW_VIEWPORT,
   };
+}
+
+export function getScreenshotComparisonOptions(env = process.env) {
+  const pixelmatchThreshold = parseNonNegativeFloat(env.SCREENSHOT_PIXELMATCH_THRESHOLD, 0.1);
+  const maxDiffPixels = parseNonNegativeInteger(env.SCREENSHOT_MAX_DIFF_PIXELS, 0);
+  const maxDiffPixelRatio = parseNonNegativeFloat(env.SCREENSHOT_MAX_DIFF_PIXEL_RATIO, 0);
+
+  return Object.freeze({
+    settings: Object.freeze({
+      pixelmatchThreshold,
+      maxDiffPixels,
+      maxDiffPixelRatio,
+    }),
+    preview: Object.freeze({
+      pixelmatchThreshold: parseNonNegativeFloat(env.PREVIEW_SCREENSHOT_PIXELMATCH_THRESHOLD, pixelmatchThreshold),
+      maxDiffPixels: parseNonNegativeInteger(env.PREVIEW_SCREENSHOT_MAX_DIFF_PIXELS, maxDiffPixels),
+      maxDiffPixelRatio: parseNonNegativeFloat(
+        env.PREVIEW_SCREENSHOT_MAX_DIFF_PIXEL_RATIO,
+        hasExplicitEnvValue(env, 'SCREENSHOT_MAX_DIFF_PIXEL_RATIO')
+          ? maxDiffPixelRatio
+          : DEFAULT_PREVIEW_MAX_DIFF_PIXEL_RATIO
+      ),
+    }),
+  });
 }
 
 export function requireEnv(env, name) {
@@ -52,6 +79,12 @@ export function getEnvOrFallback(env, name, fallback) {
   }
 
   return String(value).trim();
+}
+
+export function hasExplicitEnvValue(env, name) {
+  const value = env[name];
+
+  return !(value === undefined || value === null || String(value).trim() === '');
 }
 
 export function getDefaultBaseUrl(env) {
