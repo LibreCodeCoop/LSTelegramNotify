@@ -281,6 +281,14 @@ export async function findPluginConfigureUrl(page, { baseUrl, pluginName, maxPag
   return ensurePluginConfigureUrl(page, { baseUrl, pluginName, maxPages });
 }
 
+async function waitForDocumentFonts(page) {
+  await page.evaluate(async () => {
+    if ('fonts' in document) {
+      await document.fonts.ready;
+    }
+  });
+}
+
 export async function captureSettingsScreenshot(page, {
   configureUrl,
   pluginName,
@@ -305,6 +313,7 @@ export async function captureSettingsScreenshot(page, {
   const settingsForm = page.locator(`#pluginsettings-${pluginName}`);
 
   await defaultTextField.scrollIntoViewIfNeeded();
+  await waitForDocumentFonts(page);
   return settingsForm.screenshot({
     animations: 'disabled',
     caret: 'hide',
@@ -315,6 +324,7 @@ export async function captureSettingsScreenshot(page, {
 export async function captureTelegramPreview(page, { viewport }) {
   await page.setViewportSize({ ...viewport });
   await page.setContent(await buildTelegramPreviewHtml(), { waitUntil: 'load' });
+  await waitForDocumentFonts(page);
   return page.locator('.preview-shell').screenshot({
     animations: 'disabled',
     caret: 'hide',
