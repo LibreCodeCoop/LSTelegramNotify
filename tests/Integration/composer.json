@@ -1,0 +1,28 @@
+{
+    "name": "librecodecoop/lstelegramnotify-integration-tests",
+    "description": "Behat integration tests for the LSTelegramNotify LimeSurvey plugin",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "LSTelegramNotify\\Tests\\Integration\\": "src/"
+        }
+    },
+    "require": {
+        "ext-dom": "*",
+        "ext-json": "*",
+        "ext-pdo": "*",
+        "ext-pdo_mysql": "*"
+    },
+    "require-dev": {
+        "behat/behat": "^3.16",
+        "guzzlehttp/guzzle": "^7.10",
+        "jarnaiz/behat-junit-formatter": "^1.3"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "scripts": {
+        "test": "php vendor/bin/behat --config config/behat.yml -f pretty --colors",
+        "test:junit": "php vendor/bin/behat --config config/behat.yml -f pretty --colors -f junit"
+    }
+}
