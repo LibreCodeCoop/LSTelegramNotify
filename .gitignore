@@ -1,5 +1,7 @@
 /vendor/
 /vendor-bin/**/vendor/
+/tests/Integration/vendor/
+/tests/Integration/output/
 /node_modules/
 /.env
 /playwright-report/
