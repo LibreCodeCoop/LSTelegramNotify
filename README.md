@@ -67,4 +67,3 @@ You can add custom settings by survey to send the messages to other groups, cust
 - Go to survey settings
 - GO to `Simple plugins`
 - Define your custom settings at `Settings for plugin LSTelegramNotify `
-
