@@ -10,6 +10,9 @@ use Telegram\Bot\FileUpload\InputFile;
 
 class LSTelegramNotifyPlugin extends \PluginBase
 {
+	/** @var string[]|null */
+	public $allowedPublicMethods = ['saveSurveyPluginSettings'];
+
 	/**
 	 * @var string
 	 */
@@ -23,7 +26,7 @@ class LSTelegramNotifyPlugin extends \PluginBase
 	/**
 	 * @var string
 	 */
-	protected $storage = 'DbStorage';
+	protected $storage = 'LimeSurvey\\PluginManager\\DbStorage';
 
 	/**
 	 * @var array<string, array<string, mixed>>
@@ -396,6 +399,7 @@ class LSTelegramNotifyPlugin extends \PluginBase
 		$event = $this->getEvent();
 		$surveyId = (int) $event->get('survey');
 		$defaultTextHelp = $this->createDefaultTextHelpBuilder()->build($surveyId);
+		$this->registerSurveyPluginSettingsSaveWorkaround();
 		$event->set(
 			"surveysettings.{$this->id}",
 			[
@@ -527,16 +531,131 @@ class LSTelegramNotifyPlugin extends \PluginBase
 		);
 	}
 
+	public function saveSurveyPluginSettings($request): string
+	{
+		$surveyId = $request->getPost('sid', $request->getPost('surveyid'));
+
+		if (!is_numeric($surveyId)) {
+			return $this->buildSurveyPluginSettingsSaveResponse(false, 'Missing survey id.', 400);
+		}
+
+		$pluginSettings = $request->getPost('plugin', []);
+
+		if (!is_array($pluginSettings)) {
+			$pluginSettings = [];
+		}
+
+		try {
+			foreach ($pluginSettings as $pluginName => $settings) {
+				if (!is_array($settings)) {
+					continue;
+				}
+
+				$this->dispatchSurveyPluginSettings(
+					(string) $pluginName,
+					$settings,
+					(int) $surveyId
+				);
+			}
+		} catch (\Throwable $exception) {
+			return $this->buildSurveyPluginSettingsSaveResponse(
+				false,
+				$exception->getMessage(),
+				500
+			);
+		}
+
+		return $this->buildSurveyPluginSettingsSaveResponse(true);
+	}
+
 	/**
 	 * @return void
 	 */
 	public function newSurveySettings(): void
 	{
 		$event = $this->getEvent();
+		$settings = $event->get('settings');
+		$surveyId = $event->get('survey');
 
-		foreach ($event->get('settings') as $name => $value) {
-			$this->set($name, $value, 'Survey', $event->get('survey'));
+		if (!is_iterable($settings)) {
+			return;
 		}
+
+		if (!is_int($surveyId) && !is_string($surveyId) && !is_float($surveyId)) {
+			return;
+		}
+
+		foreach ($settings as $name => $value) {
+			$this->set($name, $value, 'Survey', (int) $surveyId);
+		}
+	}
+
+	protected function registerSurveyPluginSettingsSaveWorkaround(): void
+	{
+		$saveUrl = \App()->createAbsoluteUrl(
+			'/admin/pluginhelper/sa/ajax',
+			[
+				'plugin' => static::$name,
+				'method' => 'saveSurveyPluginSettings',
+			]
+		);
+		$encodedSaveUrl = json_encode($saveUrl);
+
+		if ($encodedSaveUrl === false) {
+			return;
+		}
+
+		\Yii::app()->getClientScript()->registerScript(
+			'ls-telegram-notify-survey-plugin-save-workaround',
+			<<<JS
+	var updateLSTelegramNotifySurveyPluginFormAction = function () {
+	var form = $('#plugins');
+
+	if (!form.length) {
+		return;
+	}
+
+	form.attr('action', {$encodedSaveUrl});
+};
+
+updateLSTelegramNotifySurveyPluginFormAction();
+$(document)
+	.off('pjax:scriptcomplete.lsTelegramNotifySurveyPluginSaveWorkaround')
+	.on('pjax:scriptcomplete.lsTelegramNotifySurveyPluginSaveWorkaround', updateLSTelegramNotifySurveyPluginFormAction);
+JS,
+			\LSYii_ClientScript::POS_POSTSCRIPT
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $settings
+	 */
+	protected function dispatchSurveyPluginSettings(string $pluginName, array $settings, int $surveyId): void
+	{
+		$event = new \PluginEvent('newSurveySettings');
+		$event->set('settings', $settings);
+		$event->set('survey', $surveyId);
+
+		\Yii::app()->getPluginManager()->dispatchEvent($event, $pluginName);
+	}
+
+	protected function buildSurveyPluginSettingsSaveResponse(bool $success, string $message = '', int $statusCode = 200): string
+	{
+		http_response_code($statusCode);
+
+		$response = ['success' => $success];
+
+		if ($message !== '') {
+			$response['message'] = $message;
+		}
+
+		$json = json_encode($response);
+
+		if ($json === false) {
+			return '{"success":false,"message":"Could not encode response."}';
+		}
+
+		return $json;
 	}
 
 	private function getCsv(int $surveyId): string
