@@ -15,7 +15,9 @@ class LSTelegramNotifyPluginTest extends TestCase
     {
         \Survey::$findByPkHandler = null;
         \AppRuntimeMock::$createAbsoluteUrlHandler = null;
+        \AppRuntimeMock::$pluginManager = null;
         \FieldMapRuntimeMock::$createFieldMapHandler = null;
+        \Yii::$registeredScripts = [];
         \viewHelper::$getFieldTextHandler = null;
         \viewHelper::$getFieldCodeHandler = null;
     }
@@ -363,6 +365,9 @@ class LSTelegramNotifyPluginTest extends TestCase
         $this->assertStringContainsString('CONTATO[EMAIL]', $definition['settings']['DefaultText']['help']);
         $this->assertStringContainsString('E-mail para contato', $definition['settings']['DefaultText']['help']);
         $this->assertStringContainsString('NOME', $definition['settings']['DefaultText']['help']);
+        $this->assertArrayHasKey('ls-telegram-notify-survey-plugin-save-workaround', \Yii::$registeredScripts);
+        $this->assertStringContainsString('pluginhelper\\/sa\\/ajax', \Yii::$registeredScripts['ls-telegram-notify-survey-plugin-save-workaround']['script']);
+        $this->assertStringContainsString('saveSurveyPluginSettings', \Yii::$registeredScripts['ls-telegram-notify-survey-plugin-save-workaround']['script']);
     }
 
     public function testNewSurveySettingsPersistsEachIncomingSurveySetting(): void
@@ -400,6 +405,75 @@ class LSTelegramNotifyPluginTest extends TestCase
                 'id' => 88,
             ],
         ], $plugin->getSavedSettings());
+    }
+
+    public function testPluginUsesFullyQualifiedDbStorageClass(): void
+    {
+        $plugin = $this->newPlugin();
+        $storageProperty = new ReflectionProperty($plugin, 'storage');
+
+        $this->assertSame(
+            'LimeSurvey\\PluginManager\\DbStorage',
+            $storageProperty->getValue($plugin)
+        );
+    }
+
+    public function testSaveSurveyPluginSettingsDispatchesPostedPluginSettings(): void
+    {
+        $plugin = new class extends LSTelegramNotifyPluginDouble {
+            /** @var array<int, array{pluginName: string, settings: array<string, mixed>, surveyId: int}> */
+            public array $dispatchCalls = [];
+
+            protected function dispatchSurveyPluginSettings(string $pluginName, array $settings, int $surveyId): void
+            {
+                $this->dispatchCalls[] = [
+                    'pluginName' => $pluginName,
+                    'settings' => $settings,
+                    'surveyId' => $surveyId,
+                ];
+            }
+        };
+
+        $request = new class {
+            public function getPost(string $name, $default = null)
+            {
+                $values = [
+                    'sid' => '77',
+                    'plugin' => [
+                        'LSTelegramNotify' => [
+                            'DefaultText' => 'Mensagem survey',
+                            'SendMessage' => '1',
+                        ],
+                        'OtherPlugin' => [
+                            'Enabled' => '1',
+                        ],
+                    ],
+                ];
+
+                return $values[$name] ?? $default;
+            }
+        };
+
+        $response = $plugin->saveSurveyPluginSettings($request);
+
+        $this->assertJson($response);
+        $this->assertSame([
+            [
+                'pluginName' => 'LSTelegramNotify',
+                'settings' => [
+                    'DefaultText' => 'Mensagem survey',
+                    'SendMessage' => '1',
+                ],
+                'surveyId' => 77,
+            ],
+            [
+                'pluginName' => 'OtherPlugin',
+                'settings' => [
+                    'Enabled' => '1',
+                ],
+                'surveyId' => 77,
+            ],
+        ], $plugin->dispatchCalls);
     }
 
     private function newPlugin(): \LSTelegramNotifyPluginDouble
