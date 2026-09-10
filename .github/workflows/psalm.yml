@@ -26,5 +26,8 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
 
+      - name: Install dev tools
+        run: composer run tools:install
+
       - name: Run Psalm
         run: composer run psalm

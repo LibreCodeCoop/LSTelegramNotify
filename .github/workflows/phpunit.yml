@@ -25,5 +25,8 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
 
+      - name: Install dev tools
+        run: composer run tools:install
+
       - name: Run plugin unit tests
         run: composer run test:unit

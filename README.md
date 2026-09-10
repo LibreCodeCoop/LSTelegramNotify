@@ -19,9 +19,21 @@ The image below is a locally generated preview of a rendered Telegram message us
 
 - Copy the LSTelegramNotify folder to the Limesurvey "plugins" directory.
 - Go to `LSTelegramNotify` folder
-- Run `composer install` inside of folder `LSTelegramNotify`
+- Run `composer install --no-dev` inside of folder `LSTelegramNotify` (only the runtime dependency is needed to run the plugin)
 - Activate the plugin at the Limesurvey plugin manager (requires proper user rights for accessing the feature at the Limesurvey admin interface).
 - Configure the plugin at the settings page
+
+## Development
+
+The linters, static analysis and test tools are managed as isolated
+[composer-bin](https://github.com/bamarni/composer-bin-plugin) sets. After
+`composer install`, pull them with:
+
+```
+composer tools:install
+```
+
+You can then run `composer test:unit`, `composer psalm` and `composer cs:check`.
 
 ## Available placeholders
 

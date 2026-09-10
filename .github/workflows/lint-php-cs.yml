@@ -25,5 +25,8 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
 
+      - name: Install dev tools
+        run: composer run tools:install
+
       - name: Check PHP coding style
         run: composer run cs:check
