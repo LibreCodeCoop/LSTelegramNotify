@@ -1,0 +1,11 @@
+default:
+  suites:
+    default:
+      contexts:
+        - LSTelegramNotify\Tests\Integration\Context\PluginSettingsApiContext
+      paths:
+        - '%paths.base%/../features'
+  extensions:
+    jarnaiz\JUnitFormatter\JUnitFormatterExtension:
+      filename: report.xml
+      outputDir: '%paths.base%/../output/'

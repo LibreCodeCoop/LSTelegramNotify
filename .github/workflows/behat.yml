@@ -1,0 +1,46 @@
+name: Behat Integration Tests
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: behat-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  behat:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare disposable LimeSurvey stack
+        run: |
+          docker compose up -d --build --wait
+          docker compose exec -T --user "$(id -u):$(id -g)" limesurvey composer install --working-dir=/var/www/html/plugins/LSTelegramNotify --no-interaction --prefer-dist --no-dev --no-scripts
+          docker compose exec -T --user "$(id -u):$(id -g)" limesurvey composer install --working-dir=/var/www/html/plugins/LSTelegramNotify/tests/Integration --no-interaction --prefer-dist
+
+      - name: Run Behat integration tests
+        run: |
+          docker compose exec -T --user "$(id -u):$(id -g)" limesurvey composer --working-dir=/var/www/html/plugins/LSTelegramNotify/tests/Integration run test:junit
+
+      - name: Upload Behat report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: behat-report
+          path: tests/Integration/output/report.xml
+          if-no-files-found: ignore
+
+      - name: Print container logs
+        if: always()
+        run: docker compose logs --no-color
+
+      - name: Stop disposable LimeSurvey stack
+        if: always()
+        run: docker compose down -v

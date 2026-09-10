@@ -1,71 +1,13 @@
 <?php
 
-class AppRuntimeMock
-{
-    public static $createAbsoluteUrlHandler;
-
-    public function createAbsoluteUrl($route, array $params = []): string
-    {
-        if (is_callable(self::$createAbsoluteUrlHandler)) {
-            return call_user_func(self::$createAbsoluteUrlHandler, $route, $params);
-        }
-
-        $query = http_build_query($params);
-        return 'https://example.test' . $route . ($query !== '' ? '?' . $query : '');
-    }
-
-    public function loadHelper($name): void
-    {
-    }
-}
-
-function App(): AppRuntimeMock
-{
-    static $app;
-
-    if (!$app instanceof AppRuntimeMock) {
-        $app = new AppRuntimeMock();
-    }
-
-    return $app;
-}
-
-class PluginBase
-{
-}
-
-class Yii
-{
-    public static function import($name, $force = false)
-    {
-    }
-
-    public static function app()
-    {
-        return new class {
-            public function getLanguage()
-            {
-                return 'en';
-            }
-        };
-    }
-}
-
-class Survey
-{
-    public static $findByPkHandler;
-
-    public static function model()
-    {
-        return new class {
-            public function findByPk($id)
-            {
-                if (is_callable(Survey::$findByPkHandler)) {
-                    return call_user_func(Survey::$findByPkHandler, $id);
-                }
-
-                return null;
-            }
-        };
-    }
-}
+require_once __DIR__ . '/Stubs/AppRuntimeMock.php';
+require_once __DIR__ . '/Stubs/PluginBase.php';
+require_once __DIR__ . '/Stubs/Yii.php';
+require_once __DIR__ . '/Stubs/Permission.php';
+require_once __DIR__ . '/Stubs/FieldMapRuntimeMock.php';
+require_once __DIR__ . '/Stubs/Survey.php';
+require_once __DIR__ . '/Stubs/SurveyDynamic.php';
+require_once __DIR__ . '/Stubs/FormattingOptions.php';
+require_once __DIR__ . '/Stubs/SurveyDao.php';
+require_once __DIR__ . '/Stubs/Translator.php';
+require_once __DIR__ . '/Stubs/viewHelper.php';

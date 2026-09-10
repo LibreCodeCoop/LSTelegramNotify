@@ -1,0 +1,32 @@
+name: PHP CS Fixer
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  lint-php-cs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.5
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          tools: composer
+          coverage: none
+
+      - name: Validate composer.json
+        run: composer validate --no-check-publish
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Install dev tools
+        run: composer run tools:install
+
+      - name: Check PHP coding style
+        run: composer run cs:check

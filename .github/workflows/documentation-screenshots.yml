@@ -1,0 +1,97 @@
+name: Documentation Screenshots
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  screenshot:
+    runs-on: ubuntu-latest
+    env:
+      LIMESURVEY_BASE_URL: http://127.0.0.1:18080
+      LIMESURVEY_ADMIN_USER: admin
+      LIMESURVEY_ADMIN_PASSWORD: admin
+      LIMESURVEY_STACK_HOST_PORT: '18080'
+      PLAYWRIGHT_HEADLESS: 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.5
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-scripts
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Start LimeSurvey test stack
+        run: docker compose up -d --force-recreate
+
+      - name: Wait for LimeSurvey admin login page
+        run: >-
+          curl --fail --silent --show-error
+          --retry 60
+          --retry-all-errors
+          --retry-delay 2
+          "$LIMESURVEY_BASE_URL/index.php/admin/authentication/sa/login"
+          > /dev/null
+
+      - name: Validate documentation screenshots
+        id: screenshot_check
+        continue-on-error: true
+        run: npm run screenshots:check
+
+      - name: Explain screenshot failure
+        if: steps.screenshot_check.outcome == 'failure'
+        run: |
+          cat <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          ## Documentation screenshots need attention
+
+          - Run `composer install --no-interaction --prefer-dist --no-scripts` if your local checkout does not already have `vendor/`.
+          - To reproduce with the same disposable LimeSurvey stack used in CI, run `LIMESURVEY_STACK_HOST_PORT=18080 docker compose up -d --force-recreate` from the repository root.
+          - Then run `LIMESURVEY_BASE_URL=http://127.0.0.1:18080 LIMESURVEY_ADMIN_USER=admin LIMESURVEY_ADMIN_PASSWORD=admin npm run screenshots:check`.
+          - If the screenshots drifted, run `LIMESURVEY_BASE_URL=http://127.0.0.1:18080 LIMESURVEY_ADMIN_USER=admin LIMESURVEY_ADMIN_PASSWORD=admin npm run screenshots:update` and commit the updated PNG files.
+          - Download the `documentation-screenshot-diffs` artifact from this workflow run for the visual diff.
+          EOF
+          echo "::error::Documentation screenshots are out of date. Reproduce with the screenshot compose stack, run npm run screenshots:update, and commit the updated PNG files."
+
+      - name: Upload screenshot diff artifacts
+        if: steps.screenshot_check.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-screenshot-diffs
+          path: test-results/screenshots
+          if-no-files-found: ignore
+
+      - name: Show LimeSurvey stack logs on failure
+        if: failure()
+        run: |
+          docker compose ps
+          docker compose logs --no-color
+
+      - name: Stop LimeSurvey test stack
+        if: always()
+        run: docker compose down -v
+
+      - name: Fail when documentation screenshots are stale
+        if: steps.screenshot_check.outcome == 'failure'
+        run: exit 1

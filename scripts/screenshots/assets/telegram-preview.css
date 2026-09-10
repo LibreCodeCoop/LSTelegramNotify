@@ -1,0 +1,141 @@
+:root {
+  color-scheme: light;
+  font-family: "TelegramPreviewSans", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, #d9efff 0%, #c7e4f7 100%);
+  padding: 48px;
+  color: #173042;
+}
+
+.preview-shell {
+  width: 920px;
+  border-radius: 32px;
+  overflow: hidden;
+  box-shadow: 0 28px 60px rgba(17, 66, 100, 0.18);
+  background: #e5f3fb;
+  border: 1px solid rgba(23, 48, 66, 0.08);
+}
+
+.preview-header {
+  padding: 24px 28px;
+  background: #4ea4d8;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.preview-header strong {
+  display: block;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.preview-header span {
+  display: block;
+  margin-top: 4px;
+  font-size: 14px;
+  opacity: 0.92;
+}
+
+.preview-badge {
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.preview-stage {
+  padding: 40px 32px 52px;
+  background:
+    radial-gradient(circle at 25% 20%, rgba(255, 255, 255, 0.65), transparent 28%),
+    radial-gradient(circle at 80% 18%, rgba(255, 255, 255, 0.45), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0));
+}
+
+.message-meta {
+  text-align: center;
+  font-size: 13px;
+  color: rgba(23, 48, 66, 0.72);
+  margin-bottom: 18px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.message-bubble {
+  max-width: 640px;
+  margin-left: auto;
+  background: linear-gradient(180deg, #dcf8c6 0%, #d3f0be 100%);
+  border-radius: 24px 24px 8px 24px;
+  padding: 24px 24px 16px;
+  box-shadow: 0 16px 32px rgba(71, 122, 68, 0.16);
+  position: relative;
+}
+
+.message-bubble::after {
+  content: '';
+  position: absolute;
+  right: -10px;
+  bottom: 0;
+  width: 0;
+  height: 0;
+  border-left: 14px solid #d3f0be;
+  border-top: 12px solid transparent;
+  border-bottom: 8px solid transparent;
+}
+
+.message-bubble h2 {
+  margin: 0 0 16px;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.message-bubble p {
+  margin: 0 0 12px;
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.message-bubble code {
+  font-family: "TelegramPreviewMono", monospace;
+  font-size: 0.95em;
+  border-radius: 8px;
+  background: rgba(23, 48, 66, 0.08);
+  padding: 2px 6px;
+}
+
+.message-bubble a {
+  color: #0b68a2;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.message-divider {
+  margin: 18px 0;
+  border: 0;
+  height: 1px;
+  background: rgba(23, 48, 66, 0.12);
+}
+
+.message-footnote {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+  font-size: 13px;
+  color: rgba(23, 48, 66, 0.62);
+  font-weight: 600;
+}

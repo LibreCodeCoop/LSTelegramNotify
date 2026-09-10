@@ -1,0 +1,23 @@
+name: PHP Lint
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  lint-php:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.5
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          tools: composer
+          coverage: none
+
+      - name: Run PHP syntax lint
+        run: composer run lint

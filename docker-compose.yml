@@ -1,0 +1,57 @@
+services:
+  limesurvey:
+    build:
+      context: ./.docker/php
+      dockerfile: Dockerfile
+      args:
+        LIMESURVEY_STACK_IMAGE: ${LIMESURVEY_STACK_IMAGE:-martialblog/limesurvey@sha256:4bfa6cac546fc95de6b26dc9afe118814df7941ebdec3f902f18cfbcd1478452}
+    depends_on:
+      - lime-db
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    environment:
+      DB_HOST: ${LIMESURVEY_STACK_DB_HOST:-lime-db}
+      DB_PORT: '${LIMESURVEY_STACK_DB_PORT:-3306}'
+      DB_NAME: ${LIMESURVEY_STACK_DB_NAME:-limesurvey}
+      DB_USERNAME: ${LIMESURVEY_STACK_DB_USERNAME:-limesurvey}
+      DB_PASSWORD: ${LIMESURVEY_STACK_DB_PASSWORD:-limesurvey}
+      ADMIN_USER: ${LIMESURVEY_STACK_ADMIN_USER:-admin}
+      ADMIN_NAME: ${LIMESURVEY_STACK_ADMIN_NAME:-admin}
+      ADMIN_EMAIL: ${LIMESURVEY_STACK_ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${LIMESURVEY_STACK_ADMIN_PASSWORD:-admin}
+      LIMESURVEY_BASE_URL: 'http://host.docker.internal:${LIMESURVEY_STACK_HOST_PORT:-18080}'
+      LIMESURVEY_DB_HOST: ${LIMESURVEY_STACK_DB_HOST:-lime-db}
+      LIMESURVEY_DB_PORT: '${LIMESURVEY_STACK_DB_PORT:-3306}'
+      LIMESURVEY_DB_NAME: ${LIMESURVEY_STACK_DB_NAME:-limesurvey}
+      LIMESURVEY_DB_USER: ${LIMESURVEY_STACK_DB_USERNAME:-limesurvey}
+      LIMESURVEY_DB_PASSWORD: ${LIMESURVEY_STACK_DB_PASSWORD:-limesurvey}
+      LIMESURVEY_ADMIN_USER: ${LIMESURVEY_STACK_ADMIN_USER:-admin}
+      LIMESURVEY_ADMIN_PASSWORD: ${LIMESURVEY_STACK_ADMIN_PASSWORD:-admin}
+      LIMESURVEY_PLUGIN_NAME: ${LIMESURVEY_PLUGIN_NAME:-LSTelegramNotify}
+      COMPOSER_ALLOW_SUPERUSER: '1'
+      COMPOSER_HOME: /tmp/composer-home
+      COMPOSER_CACHE_DIR: /tmp/composer-cache
+      HOME: /tmp/composer-home
+      PUBLIC_URL: '${LIMESURVEY_STACK_PUBLIC_SCHEME:-http}://${LIMESURVEY_STACK_PUBLIC_HOST:-127.0.0.1}:${LIMESURVEY_STACK_HOST_PORT:-18080}'
+      BASE_URL: '${LIMESURVEY_STACK_BASE_SCHEME:-http}://${LIMESURVEY_STACK_BASE_HOST:-127.0.0.1}:${LIMESURVEY_STACK_HOST_PORT:-18080}'
+      URL_FORMAT: ${LIMESURVEY_STACK_URL_FORMAT:-path}
+      SHOW_SCRIPT_NAME: '${LIMESURVEY_STACK_SHOW_SCRIPT_NAME:-true}'
+    ports:
+      - '${LIMESURVEY_STACK_HOST_PORT:-18080}:${LIMESURVEY_STACK_CONTAINER_PORT:-8080}'
+    healthcheck:
+      test: ['CMD', 'curl', '--silent', '--show-error', '--fail', 'http://127.0.0.1:8080/index.php/admin/authentication/sa/login']
+      interval: 2s
+      timeout: 5s
+      retries: 60
+      start_period: 5s
+    volumes:
+      - '${LIMESURVEY_STACK_PLUGIN_SOURCE:-./}:${LIMESURVEY_STACK_PLUGIN_TARGET:-/var/www/html/plugins/LSTelegramNotify}'
+
+  lime-db:
+    image: ${LIMESURVEY_STACK_DB_IMAGE:-mariadb:11.4}
+    environment:
+      MYSQL_USER: ${LIMESURVEY_STACK_DB_USERNAME:-limesurvey}
+      MYSQL_DATABASE: ${LIMESURVEY_STACK_DB_NAME:-limesurvey}
+      MYSQL_PASSWORD: ${LIMESURVEY_STACK_DB_PASSWORD:-limesurvey}
+      MYSQL_ROOT_PASSWORD: ${LIMESURVEY_STACK_DB_ROOT_PASSWORD:-root}
+
