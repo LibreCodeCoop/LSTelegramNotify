@@ -3,6 +3,7 @@
 require_once __DIR__ . '/Stubs/AppRuntimeMock.php';
 require_once __DIR__ . '/Stubs/PluginBase.php';
 require_once __DIR__ . '/Stubs/Yii.php';
+require_once __DIR__ . '/Stubs/Permission.php';
 require_once __DIR__ . '/Stubs/FieldMapRuntimeMock.php';
 require_once __DIR__ . '/Stubs/Survey.php';
 require_once __DIR__ . '/Stubs/SurveyDynamic.php';

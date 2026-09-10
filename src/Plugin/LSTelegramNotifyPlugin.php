@@ -539,6 +539,14 @@ class LSTelegramNotifyPlugin extends \PluginBase
 			return $this->buildSurveyPluginSettingsSaveResponse(false, 'Missing survey id.', 400);
 		}
 
+		if (!\Permission::model()->hasSurveyPermission((int) $surveyId, 'surveysettings', 'update')) {
+			return $this->buildSurveyPluginSettingsSaveResponse(
+				false,
+				'You do not have permission to update the settings for this survey.',
+				403
+			);
+		}
+
 		$pluginSettings = $request->getPost('plugin', []);
 
 		if (!is_array($pluginSettings)) {

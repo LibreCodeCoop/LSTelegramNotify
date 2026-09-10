@@ -14,6 +14,7 @@ class LSTelegramNotifyPluginTest extends TestCase
     protected function setUp(): void
     {
         \Survey::$findByPkHandler = null;
+        \Permission::$hasSurveyPermissionHandler = null;
         \AppRuntimeMock::$createAbsoluteUrlHandler = null;
         \AppRuntimeMock::$pluginManager = null;
         \FieldMapRuntimeMock::$createFieldMapHandler = null;
@@ -474,6 +475,56 @@ class LSTelegramNotifyPluginTest extends TestCase
                 'surveyId' => 77,
             ],
         ], $plugin->dispatchCalls);
+    }
+
+    public function testSaveSurveyPluginSettingsRejectsUsersWithoutUpdatePermission(): void
+    {
+        $plugin = new class extends LSTelegramNotifyPluginDouble {
+            /** @var array<int, array{pluginName: string, settings: array<string, mixed>, surveyId: int}> */
+            public array $dispatchCalls = [];
+
+            protected function dispatchSurveyPluginSettings(string $pluginName, array $settings, int $surveyId): void
+            {
+                $this->dispatchCalls[] = [
+                    'pluginName' => $pluginName,
+                    'settings' => $settings,
+                    'surveyId' => $surveyId,
+                ];
+            }
+        };
+
+        $capturedPermission = null;
+        \Permission::$hasSurveyPermissionHandler = static function ($surveyId, $permission, $crud) use (&$capturedPermission): bool {
+            $capturedPermission = [$surveyId, $permission, $crud];
+
+            return false;
+        };
+
+        $request = new class {
+            public function getPost(string $name, $default = null)
+            {
+                $values = [
+                    'sid' => '77',
+                    'plugin' => [
+                        'LSTelegramNotify' => [
+                            'ChatId' => 'attacker-chat',
+                            'AuthToken' => 'attacker-token',
+                        ],
+                    ],
+                ];
+
+                return $values[$name] ?? $default;
+            }
+        };
+
+        $response = $plugin->saveSurveyPluginSettings($request);
+
+        $this->assertSame([77, 'surveysettings', 'update'], $capturedPermission);
+        $this->assertSame([], $plugin->dispatchCalls);
+        $this->assertSame(
+            ['success' => false, 'message' => 'You do not have permission to update the settings for this survey.'],
+            json_decode($response, true)
+        );
     }
 
     private function newPlugin(): \LSTelegramNotifyPluginDouble
