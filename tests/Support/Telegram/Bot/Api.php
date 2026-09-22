@@ -16,4 +16,13 @@ class Api
     {
         return ($this->sendMessageHandler)($params);
     }
+
+    public function post(string $endpoint, array $params = [], bool $fileUpload = false): object
+    {
+        return (object) ($this->sendMessageHandler)([
+            'endpoint' => $endpoint,
+            'params' => $params,
+            'fileUpload' => $fileUpload,
+        ]);
+    }
 }
