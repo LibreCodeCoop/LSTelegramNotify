@@ -29,3 +29,21 @@ Feature: Save survey plugin settings through the plugin helper API
     And the JSON response should contain:
       | success | false              |
       | message | Missing survey id. |
+
+
+  Scenario: Reject a global Telegram test when settings are missing
+    When I send a POST request to "/index.php/admin/pluginhelper/sa/ajax/plugin/<PLUGIN_NAME>/method/sendTestMessage" with form data:
+      | request | test |
+    Then the response code should be 400
+    And the JSON response should contain:
+      | success | false                                              |
+      | message | Auth Token and Chat id must be saved before testing. |
+
+  Scenario: Reject a survey Telegram test when effective settings are missing
+    Given I create a minimal survey with a unique survey id
+    When I send a POST request to "/index.php/admin/pluginhelper/sa/ajax/plugin/<PLUGIN_NAME>/method/sendTestMessage" with form data:
+      | surveyId | <SURVEY_ID> |
+    Then the response code should be 400
+    And the JSON response should contain:
+      | success | false                                              |
+      | message | Auth Token and Chat id must be saved before testing. |
