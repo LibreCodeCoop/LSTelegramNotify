@@ -5,6 +5,7 @@ The LimeSurvey `LSTelegramNotify` plugin sends survey completion notifications t
 Useful improvements now available in this plugin include:
 
 - global/per-survey `Enable` switch for notifications
+- a `Send test message` control in global and survey-specific settings to validate the saved bot token and chat destination without using survey responses
 - HTML-safe rendering when using `ParseMode = HTML`
 - Telegram Rich Messages for `ParseMode = HTML`, including rich blocks such as headings, tables, details and media
 - plain `Text` mode without Telegram `parse_mode`
@@ -73,6 +74,12 @@ The global plugin settings screen documents the available placeholders directly 
 
 <!-- Maintainers: CI validates this settings screenshot too. See `scripts/screenshots/README.md` for the local regeneration flow and disposable LimeSurvey stack. -->
 <img src="img/settings.png" />
+
+### Test message
+
+The global plugin settings and each survey-specific settings page include a `Send test message` control. Save the settings first, then use the control to send a fixed plain-text message to the configured Telegram chat.
+
+The test does not render the survey template and does not read or transmit survey responses. In survey settings it uses the effective survey configuration, including fallback to saved global `AuthToken` and `ChatId` values.
 
 ### Custom settings by survey
 You can add custom settings by survey to send the messages to other groups, customize the text and change other settings.
