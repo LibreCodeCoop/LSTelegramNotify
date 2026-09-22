@@ -745,6 +745,11 @@ JS,
 
 	protected function buildSurveyPluginSettingsSaveResponse(bool $success, string $message = '', int $statusCode = 200): string
 	{
+		return $this->buildJsonResponse($success, $message, $statusCode);
+	}
+
+	protected function buildJsonResponse(bool $success, string $message = '', int $statusCode = 200): string
+	{
 		http_response_code($statusCode);
 
 		$response = ['success' => $success];
@@ -760,6 +765,28 @@ JS,
 		}
 
 		return $json;
+	}
+
+	protected function registerTestMessageScript(): void
+	{
+		$endpointUrl = \App()->createAbsoluteUrl(
+			'/admin/pluginhelper/sa/ajax',
+			[
+				'plugin' => static::$name,
+				'method' => 'sendTestMessage',
+			]
+		);
+		$script = $this->createTestMessageUiBuilder()->buildScript($endpointUrl);
+
+		if ($script === '') {
+			return;
+		}
+
+		\Yii::app()->getClientScript()->registerScript(
+			'ls-telegram-notify-test-message',
+			$script,
+			\LSYii_ClientScript::POS_POSTSCRIPT
+		);
 	}
 
 	private function getCsv(int $surveyId): string
