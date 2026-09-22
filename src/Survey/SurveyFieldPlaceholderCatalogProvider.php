@@ -25,6 +25,10 @@ class SurveyFieldPlaceholderCatalogProvider
         $fieldCatalog = [];
 
         foreach ($fieldMap as $fieldName => $field) {
+            if (empty($field['qid'])) {
+                continue;
+            }
+
             $fieldCode = trim((string) \viewHelper::getFieldCode($field, ['separator' => ['[', ']']]));
 
             if ($fieldCode === '') {

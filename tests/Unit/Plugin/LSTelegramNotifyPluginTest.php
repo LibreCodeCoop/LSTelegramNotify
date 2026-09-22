@@ -35,7 +35,7 @@ class LSTelegramNotifyPluginTest extends TestCase
         );
 
         $this->assertStringContainsString(
-            '{{field:FIELD_CODE.answer}}',
+            '{{FIELD_CODE_answer}}',
             $plugin->getSettingsDefinition()['DefaultText']['help']
         );
         $this->assertStringContainsString(
@@ -329,8 +329,8 @@ class LSTelegramNotifyPluginTest extends TestCase
 
         \Survey::$findByPkHandler = static fn (int $id) => (object) ['language' => 'pt-BR'];
         \FieldMapRuntimeMock::$createFieldMapHandler = static fn ($survey, $style, $full, $flatten, $language): array => [
-            '12345X1X1' => ['name' => 'email-field'],
-            '12345X1X2' => ['name' => 'name-field'],
+            '12345X1X1' => ['name' => 'email-field', 'qid' => 1],
+            '12345X1X2' => ['name' => 'name-field', 'qid' => 2],
         ];
         \viewHelper::$getFieldCodeHandler = static function (array $field, array $options): string {
             return $field['name'] === 'email-field' ? 'CONTATO[EMAIL]' : 'NOME';
