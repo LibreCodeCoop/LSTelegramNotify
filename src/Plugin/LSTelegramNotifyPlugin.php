@@ -345,6 +345,21 @@ class LSTelegramNotifyPlugin extends \PluginBase
 		return new SurveyFieldValueProvider();
 	}
 
+	protected function createTestMessageUiBuilder(): TestMessageUiBuilder
+	{
+		return new TestMessageUiBuilder();
+	}
+
+	protected function createTelegramApi(string $authToken): Api
+	{
+		return new Api($authToken);
+	}
+
+	protected function createTelegramTestMessageSender(): TelegramTestMessageSender
+	{
+		return new TelegramTestMessageSender();
+	}
+
 	private function sendPdf(int $surveyId, int $responseId, string $chatId, Api $telegram): void
 	{
 		$sendPdf = $this->get(
