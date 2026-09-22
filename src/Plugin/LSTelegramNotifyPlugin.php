@@ -167,7 +167,7 @@ class LSTelegramNotifyPlugin extends \PluginBase
 			);
 
 			if ($richMessage === false) {
-				throw new \\RuntimeException('Could not encode Telegram rich message.');
+				throw new \RuntimeException('Could not encode Telegram rich message.');
 			}
 
 			$telegram->post('sendRichMessage', [
