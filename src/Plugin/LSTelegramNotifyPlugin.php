@@ -497,6 +497,7 @@ class LSTelegramNotifyPlugin extends \PluginBase
 							$this->get('ChatId')
 						),
 					],
+					'TestMessage' => $this->createTestMessageUiBuilder()->buildSetting($surveyId),
 					'ParseMode' => [
 						'type' => $this->settings['ParseMode']['type'],
 						'label' => $this->settings['ParseMode']['label'],
