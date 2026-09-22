@@ -17,7 +17,8 @@ final class TestMessageUiBuilder
                 '<button type="button" class="btn btn-secondary ls-telegram-notify-test-message"' .
                 $surveyAttribute .
                 '>Send test message</button>' .
-                '<span class="ms-2 ls-telegram-notify-test-message-status" aria-live="polite"></span>',
+                '<span class="ms-2 ls-telegram-notify-test-message-status" aria-live="polite"></span>' .
+                '<div class="form-text">Save the Telegram settings before sending a test message.</div>',
         ];
     }
 
@@ -34,30 +35,15 @@ $(document)
     .off('click.lsTelegramNotifyTestMessage', '.ls-telegram-notify-test-message')
     .on('click.lsTelegramNotifyTestMessage', '.ls-telegram-notify-test-message', function () {
         var button = $(this);
-        var form = button.closest('form');
         var status = button.siblings('.ls-telegram-notify-test-message-status').first();
-
-        var getSettingValue = function (name) {
-            var field = form.find(
-                '[name="' + name + '"], ' +
-                '[name$="[' + name + ']"]'
-            ).first();
-
-            return field.length ? field.val() : '';
-        };
-
-        var payload = {
-            authToken: getSettingValue('AuthToken'),
-            chatId: getSettingValue('ChatId')
-        };
-
+        var payload = {};
         var surveyId = button.data('survey-id');
 
         if (surveyId !== undefined && surveyId !== '') {
             payload.surveyId = surveyId;
         }
 
-        var csrf = form.find('input[name="YII_CSRF_TOKEN"]').first();
+        var csrf = button.closest('form').find('input[name="YII_CSRF_TOKEN"]').first();
 
         if (csrf.length) {
             payload.YII_CSRF_TOKEN = csrf.val();
