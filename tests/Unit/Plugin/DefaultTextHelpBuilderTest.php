@@ -26,7 +26,7 @@ class DefaultTextHelpBuilderTest extends TestCase
         $help = $builder->build();
 
         $this->assertSame([], $provider->surveyIds);
-        $this->assertStringContainsString('{{field:FIELD_CODE.answer}}', $help);
+        $this->assertStringContainsString('{{FIELD_CODE_answer}}', $help);
         $this->assertStringContainsString('{{urlAttachments}}', $help);
         $this->assertStringContainsString('survey-specific plugin settings', $help);
         $this->assertStringNotContainsString('No field codes could be identified for this survey.', $help);

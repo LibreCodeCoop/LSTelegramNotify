@@ -30,11 +30,13 @@ class SurveyFieldPlaceholderCatalogProviderTest extends TestCase
     {
         \Survey::$findByPkHandler = static fn (int $id) => (object) ['language' => 'pt-BR'];
         \FieldMapRuntimeMock::$createFieldMapHandler = static fn ($survey, $style, $full, $flatten, $language): array => [
-            '12345X1X1' => ['name' => 'email-field'],
-            '12345X1X10' => ['name' => 'duplicate-email-field'],
-            '12345X1X2' => ['name' => 'name-field'],
-            '12345X1X3' => ['name' => 'fallback-label-field'],
-            '12345X1X4' => ['name' => 'blank-code-field'],
+            '12345X1X1' => ['name' => 'email-field', 'qid' => 1],
+            '12345X1X10' => ['name' => 'duplicate-email-field', 'qid' => 1],
+            '12345X1X2' => ['name' => 'name-field', 'qid' => 2],
+            '12345X1X3' => ['name' => 'fallback-label-field', 'qid' => 3],
+            '12345X1X4' => ['name' => 'blank-code-field', 'qid' => 4],
+            'id' => ['name' => 'response-id'],
+            'datestamp' => ['name' => 'response-datestamp'],
         ];
         \viewHelper::$getFieldCodeHandler = static function (array $field, array $options): string {
             switch ($field['name']) {

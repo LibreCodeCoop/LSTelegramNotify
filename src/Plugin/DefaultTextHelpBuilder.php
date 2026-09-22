@@ -84,13 +84,10 @@ class DefaultTextHelpBuilder
     protected function buildFieldSyntaxHelpItems(): string
     {
         $placeholders = [
-            ['token' => '{{field:FIELD_CODE.question}}', 'description' => 'Question text for a survey field'],
-            ['token' => '{{field:FIELD_CODE.answer}}', 'description' => 'Formatted answer for a survey field'],
-            ['token' => '{{field:FIELD_CODE.raw}}', 'description' => 'Raw stored value for a survey field'],
-            ['token' => '{{FIELD_CODE}}', 'description' => 'Shortcut for the question text'],
-            ['token' => '{{FIELD_CODE_answer}}', 'description' => 'Shortcut for the formatted answer'],
-            ['token' => '{{answer_FIELD_CODE}}', 'description' => 'Alternative answer shortcut'],
-            ['token' => '{{raw_FIELD_CODE}}', 'description' => 'Shortcut for the raw stored value'],
+            ['token' => '{{FIELD_CODE}}', 'description' => 'Question text for a survey field'],
+            ['token' => '{{FIELD_CODE_question}}', 'description' => 'Question text for a survey field'],
+            ['token' => '{{FIELD_CODE_answer}}', 'description' => 'Formatted answer for a survey field'],
+            ['token' => '{{FIELD_CODE_raw}}', 'description' => 'Raw stored value for a survey field'],
         ];
 
         $items = [];

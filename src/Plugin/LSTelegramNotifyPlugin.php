@@ -686,8 +686,16 @@ JS,
 		$oFormattingOptions->responseMinRecord = 1;
 		$oFormattingOptions->responseMaxRecord = $maxId;
 		$aFields = array_keys(\createFieldMap($survey, 'full', true, false, $survey->language));
-		$aTokenFields = array('tid','participant_id','firstname','lastname','email','emailstatus','language','blacklisted','sent','remindersent','remindercount','completed','usesleft','validfrom','validuntil','mpid');
-		$oFormattingOptions->selectedColumns = array_merge($aFields, $aTokenFields, array_keys($survey->tokenAttributes));
+		$oFormattingOptions->selectedColumns = $aFields;
+
+		if ($survey->hasTokensTable) {
+			$aTokenFields = array('tid','participant_id','firstname','lastname','email','emailstatus','language','blacklisted','sent','remindersent','remindercount','completed','usesleft','validfrom','validuntil','mpid');
+			$oFormattingOptions->selectedColumns = array_merge(
+				$aFields,
+				$aTokenFields,
+				array_keys($survey->tokenAttributes)
+			);
+		}
 		$oFormattingOptions->responseCompletionState = 'all';
 		$oFormattingOptions->headingFormat = 'full';
 		$oFormattingOptions->answerFormat = 'long';
