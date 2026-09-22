@@ -5,13 +5,14 @@ namespace LibreCodeCoop\LSTelegramNotify\Plugin;
 use LibreCodeCoop\LSTelegramNotify\Survey\SurveyFieldPlaceholderCatalogProvider;
 use LibreCodeCoop\LSTelegramNotify\Survey\SurveyFieldValueProvider;
 use LibreCodeCoop\LSTelegramNotify\Template\MessageTemplateRenderer;
+use LibreCodeCoop\LSTelegramNotify\Telegram\TelegramTestMessageSender;
 use Telegram\Bot\Api;
 use Telegram\Bot\FileUpload\InputFile;
 
 class LSTelegramNotifyPlugin extends \PluginBase
 {
 	/** @var string[]|null */
-	public $allowedPublicMethods = ['saveSurveyPluginSettings'];
+	public $allowedPublicMethods = ['saveSurveyPluginSettings', 'sendTestMessage'];
 
 	/**
 	 * @var string
@@ -46,6 +47,10 @@ class LSTelegramNotifyPlugin extends \PluginBase
 			'type' => 'string',
 			'label' => 'Chat id',
 			'help' => 'The ID of group that will receive the notification messages. You can add the bot <a href="https://t.me/RawDataBot" target="_blank">RawDataBot</a> to your group, get the chat_id and after remove this bot from group.',
+		],
+		'TestMessage' => [
+			'type' => 'info',
+			'content' => '',
 		],
 		'ParseMode' => [
 			'type' => 'select',
@@ -87,6 +92,8 @@ class LSTelegramNotifyPlugin extends \PluginBase
 	public function init(): void
 	{
 		$this->settings['DefaultText']['help'] = $this->createDefaultTextHelpBuilder()->build();
+		$this->settings['TestMessage'] = $this->createTestMessageUiBuilder()->buildSetting();
+		$this->registerTestMessageScript();
 		$this->subscribe('newSurveySettings');
 		$this->subscribe('afterSurveyComplete');
 		$this->subscribe('beforeSurveySettings');
