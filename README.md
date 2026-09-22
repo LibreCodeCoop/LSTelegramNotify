@@ -6,6 +6,7 @@ Useful improvements now available in this plugin include:
 
 - global/per-survey `Enable` switch for notifications
 - HTML-safe rendering when using `ParseMode = HTML`
+- Telegram Rich Messages for `ParseMode = HTML`, including rich blocks such as headings, tables, details and media
 - plain `Text` mode without Telegram `parse_mode`
 - extra URL placeholders for common survey/response actions
 - mustache placeholders for survey question/answer/raw values
@@ -51,7 +52,7 @@ These placeholders work in both legacy and mustache syntax:
 - `{urlExport}` / `{{urlExport}}`
 - `{urlAttachments}` / `{{urlAttachments}}`
 
-When `ParseMode` is `HTML`, all placeholder values are escaped before rendering so survey content cannot break the markup.
+When `ParseMode` is `HTML`, the rendered template is sent through Telegram's `sendRichMessage` API using Rich HTML. This enables richer blocks such as headings, tables, `<details>` and media such as `<img src="https://example.test/photo.jpg" />`. All placeholder values are escaped before rendering so survey content cannot break the markup.
 
 ### Survey field placeholders
 

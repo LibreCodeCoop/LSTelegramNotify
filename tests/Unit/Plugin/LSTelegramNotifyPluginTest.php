@@ -286,9 +286,12 @@ class LSTelegramNotifyPluginTest extends TestCase
         ], $renderer->calls[0]['fieldValues']);
         $this->assertSame([
             [
-                'chat_id' => 'chat-99',
-                'text' => 'Mensagem segura',
-                'parse_mode' => 'HTML',
+                'endpoint' => 'sendRichMessage',
+                'params' => [
+                    'chat_id' => 'chat-99',
+                    'rich_message' => '{"html":"Mensagem segura"}',
+                ],
+                'fileUpload' => false,
             ],
         ], $requests);
     }
