@@ -582,6 +582,51 @@ class LSTelegramNotifyPlugin extends \PluginBase
 		);
 	}
 
+	public function sendTestMessage($request): string
+	{
+		$surveyId = $request->getPost('surveyId');
+		$normalizedSurveyId = null;
+
+		if ($surveyId !== null && $surveyId !== '') {
+			if (!is_numeric($surveyId)) {
+				return $this->buildJsonResponse(false, 'Invalid survey id.', 400);
+			}
+
+			$normalizedSurveyId = (int) $surveyId;
+
+			if (!\Permission::model()->hasSurveyPermission($normalizedSurveyId, 'surveysettings', 'update')) {
+				return $this->buildJsonResponse(
+					false,
+					'You do not have permission to test Telegram settings for this survey.',
+					403
+				);
+			}
+		} elseif (!\Permission::model()->hasGlobalPermission('settings', 'update')) {
+			return $this->buildJsonResponse(
+				false,
+				'You do not have permission to test the global Telegram settings.',
+				403
+			);
+		}
+
+		$telegramSettings = $this->getTelegramConnectionSettings($normalizedSurveyId);
+
+		if ($telegramSettings['authToken'] === '' || $telegramSettings['chatId'] === '') {
+			return $this->buildJsonResponse(false, 'Auth Token and Chat id must be saved before testing.', 400);
+		}
+
+		try {
+			$this->createTelegramTestMessageSender()->send(
+				$this->createTelegramApi($telegramSettings['authToken']),
+				$telegramSettings['chatId']
+			);
+		} catch (\Throwable $exception) {
+			return $this->buildJsonResponse(false, $exception->getMessage(), 502);
+		}
+
+		return $this->buildJsonResponse(true, 'Test message sent successfully.');
+	}
+
 	public function saveSurveyPluginSettings($request): string
 	{
 		$surveyId = $request->getPost('sid', $request->getPost('surveyid'));
