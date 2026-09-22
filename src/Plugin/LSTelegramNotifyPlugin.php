@@ -118,18 +118,9 @@ class LSTelegramNotifyPlugin extends \PluginBase
 			return;
 		}
 
-		$chatId = $this->get(
-			'ChatId',
-			'Survey',
-			$surveyId,
-			$this->get('ChatId')
-		);
-		$telegram = new Api($this->get(
-			'AuthToken',
-			'Survey',
-			$surveyId,
-			$this->get('AuthToken')
-		));
+		$telegramSettings = $this->getTelegramConnectionSettings((int) $surveyId);
+		$chatId = $telegramSettings['chatId'];
+		$telegram = $this->createTelegramApi($telegramSettings['authToken']);
 		$this->sendMessage($surveyId, $responseId, $chatId, $telegram, $oSurvey->getLocalizedTitle());
 		$this->sendPdf($surveyId, $responseId, $chatId, $telegram);
 		$this->sendCsv($surveyId, $responseId, $chatId, $telegram);
@@ -256,6 +247,25 @@ class LSTelegramNotifyPlugin extends \PluginBase
 				]
 			),
 			'title' => $title,
+		];
+	}
+
+	/**
+	 * @return array{authToken: string, chatId: string}
+	 */
+	protected function getTelegramConnectionSettings(?int $surveyId = null): array
+	{
+		$authToken = (string) $this->get('AuthToken');
+		$chatId = (string) $this->get('ChatId');
+
+		if ($surveyId !== null) {
+			$authToken = (string) $this->get('AuthToken', 'Survey', $surveyId, $authToken);
+			$chatId = (string) $this->get('ChatId', 'Survey', $surveyId, $chatId);
+		}
+
+		return [
+			'authToken' => trim($authToken),
+			'chatId' => trim($chatId),
 		];
 	}
 
