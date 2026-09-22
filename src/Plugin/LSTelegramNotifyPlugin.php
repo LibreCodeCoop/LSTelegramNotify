@@ -160,6 +160,24 @@ class LSTelegramNotifyPlugin extends \PluginBase
 			$parseMode
 		);
 
+		if (strcasecmp($parseMode, 'HTML') === 0) {
+			$richMessage = json_encode(
+				['html' => $text],
+				JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+			);
+
+			if ($richMessage === false) {
+				throw new \\RuntimeException('Could not encode Telegram rich message.');
+			}
+
+			$telegram->post('sendRichMessage', [
+				'chat_id' => $chatId,
+				'rich_message' => $richMessage,
+			]);
+
+			return;
+		}
+
 		$request = [
 			'chat_id' => $chatId,
 			'text' => $text
