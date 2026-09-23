@@ -35,54 +35,55 @@ class LSTelegramNotifyPlugin extends \PluginBase
 	protected $settings = [
 		'Enable' => [
 			'type' => 'checkbox',
-			'label' => 'Enable telegram notifications',
+			'label' => 'Enable Telegram notifications',
 			'default' => true,
 		],
 		'AuthToken' => [
 			'type' => 'string',
-			'label' => 'Auth Token',
-			'help' => 'Bot API auth token, you can get one at <a href="https://t.me/BotFather" target="_blank">BotFather</a>.',
+			'label' => 'Bot token',
+			'help' => 'Telegram Bot API token. Create or manage one with <a href="https://t.me/BotFather" target="_blank">BotFather</a>.',
 		],
 		'ChatId' => [
 			'type' => 'string',
-			'label' => 'Chat id',
-			'help' => 'The ID of group that will receive the notification messages. You can add the bot <a href="https://t.me/RawDataBot" target="_blank">RawDataBot</a> to your group, get the chat_id and after remove this bot from group.',
+			'label' => 'Chat ID',
+			'help' => 'The ID of the Telegram group that will receive notifications. You can temporarily add <a href="https://t.me/RawDataBot" target="_blank">RawDataBot</a> to the group to find its chat ID, then remove the bot.',
 		],
 		'TestMessage' => [
 			'type' => 'info',
 			'content' => '',
 		],
-		'ParseMode' => [
-			'type' => 'select',
-			'label' => 'Parse mode',
-			'options' => array('HTML' => 'HTML', 'Markdown'  => 'Markdown', 'MarkdownV2' => 'MarkdownV2', 'Text' => 'Text'),
-			'help' => 'As the Telegram bot API <a href="https://core.telegram.org/bots/api#formatting-options" target="_blank">formatting options</a>.',
-			'default' => 'HTML',
-		],
-		'SendPdf' => [
-			'type' => 'checkbox',
-			'label' => 'Check to send the answer as PDF file',
-			'default' => false,
-		],
-		'SendCsv' => [
-			'type' => 'checkbox',
-			'label' => 'Check to send all answers as CSV file',
-			'default' => false,
-		],
 		'SendMessage' => [
 			'type' => 'checkbox',
-			'label' => 'Check to send a text message using the default text template',
+			'label' => 'Send a custom message',
+			'help' => 'Send a Telegram text message when a survey response is completed. Enable this to choose the message format and edit the template below.',
 			'default' => false,
+		],
+		'ParseMode' => [
+			'type' => 'select',
+			'label' => 'Message format',
+			'options' => array('HTML' => 'HTML', 'Markdown'  => 'Markdown', 'MarkdownV2' => 'MarkdownV2', 'Text' => 'Text'),
+			'help' => 'Formatting used for the custom Telegram message. See the <a href="https://core.telegram.org/bots/api#formatting-options" target="_blank">Telegram formatting options</a>.',
+			'default' => 'HTML',
 		],
 		'DefaultText' => [
 			'type' => 'text',
-			'label' => 'Default Text',
+			'label' => 'Message template',
 			'default' =>
 				"New Survey Completed!\n" .
 				"Title: <code>{title}</code>\n" .
 				"SurveyId: <code>{surveyId}</code>\n" .
 				"ResponseId: <code>{responseId}</code>\n" .
 				"PDF: <a href=\"{urlPDF}\">here</a>"
+		],
+		'SendPdf' => [
+			'type' => 'checkbox',
+			'label' => 'Send the response as a PDF file',
+			'default' => false,
+		],
+		'SendCsv' => [
+			'type' => 'checkbox',
+			'label' => 'Send all survey responses as a CSV file',
+			'default' => false,
 		],
 	];
 
@@ -94,6 +95,7 @@ class LSTelegramNotifyPlugin extends \PluginBase
 		$this->settings['DefaultText']['help'] = $this->createDefaultTextHelpBuilder()->build();
 		$this->settings['TestMessage'] = $this->createTestMessageUiBuilder()->buildSetting();
 		$this->registerTestMessageScript();
+		$this->registerMessageSettingsVisibilityScript();
 		$this->subscribe('newSurveySettings');
 		$this->subscribe('afterSurveyComplete');
 		$this->subscribe('beforeSurveySettings');
@@ -360,6 +362,11 @@ class LSTelegramNotifyPlugin extends \PluginBase
 		return new TestMessageUiBuilder();
 	}
 
+	protected function createMessageSettingsUiBuilder(): MessageSettingsUiBuilder
+	{
+		return new MessageSettingsUiBuilder();
+	}
+
 	protected function createTelegramApi(string $authToken): Api
 	{
 		return new Api($authToken);
@@ -488,7 +495,7 @@ class LSTelegramNotifyPlugin extends \PluginBase
 					],
 					'ChatId' => [
 						'type' => 'string',
-						'label' => 'Chat id',
+						'label' => $this->settings['ChatId']['label'],
 						'help' => $this->settings['ChatId']['help'],
 						'current' => $this->get(
 							'ChatId',
@@ -498,6 +505,22 @@ class LSTelegramNotifyPlugin extends \PluginBase
 						),
 					],
 					'TestMessage' => $this->createTestMessageUiBuilder()->buildSetting($surveyId),
+					'SendMessage' => [
+						'type' => $this->settings['SendMessage']['type'],
+						'label' => $this->settings['SendMessage']['label'],
+						'help' => $this->settings['SendMessage']['help'],
+						'current' => $this->get(
+							'SendMessage',
+							'Survey',
+							$surveyId,
+							$this->get(
+								'SendMessage',
+								null,
+								null,
+								$this->settings['SendMessage']['default']
+							)
+						),
+					],
 					'ParseMode' => [
 						'type' => $this->settings['ParseMode']['type'],
 						'label' => $this->settings['ParseMode']['label'],
@@ -513,6 +536,22 @@ class LSTelegramNotifyPlugin extends \PluginBase
 								null,
 								null,
 								$this->settings['ParseMode']['default']
+							)
+						),
+					],
+					'DefaultText' => [
+						'type' => 'text',
+						'label' => $this->settings['DefaultText']['label'],
+						'help' => $defaultTextHelp,
+						'current' => $this->get(
+							'DefaultText',
+							'Survey',
+							$surveyId,
+							$this->get(
+								'DefaultText',
+								null,
+								null,
+								$this->settings['DefaultText']['default']
 							)
 						),
 					],
@@ -546,37 +585,7 @@ class LSTelegramNotifyPlugin extends \PluginBase
 							)
 						),
 					],
-					'SendMessage' => [
-						'type' => $this->settings['SendMessage']['type'],
-						'label' => $this->settings['SendMessage']['label'],
-						'current' => $this->get(
-							'SendMessage',
-							'Survey',
-							$surveyId,
-							$this->get(
-								'SendMessage',
-								null,
-								null,
-								$this->settings['SendMessage']['default']
-							)
-						),
-					],
-					'DefaultText' => [
-						'type' => 'text',
-						'label' => 'Default Text',
-						'help' => $defaultTextHelp,
-						'current' => $this->get(
-							'DefaultText',
-							'Survey',
-							$surveyId,
-							$this->get(
-								'DefaultText',
-								null,
-								null,
-								$this->settings['DefaultText']['default']
-							)
-						),
-					]
+
 				]
 			]
 		);
@@ -692,6 +701,21 @@ class LSTelegramNotifyPlugin extends \PluginBase
 		foreach ($settings as $name => $value) {
 			$this->set($name, $value, 'Survey', (int) $surveyId);
 		}
+	}
+
+	protected function registerMessageSettingsVisibilityScript(): void
+	{
+		$script = $this->createMessageSettingsUiBuilder()->buildScript();
+
+		if ($script === '') {
+			return;
+		}
+
+		\Yii::app()->getClientScript()->registerScript(
+			'ls-telegram-notify-message-settings-visibility',
+			$script,
+			\LSYii_ClientScript::POS_POSTSCRIPT
+		);
 	}
 
 	protected function registerSurveyPluginSettingsSaveWorkaround(): void

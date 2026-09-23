@@ -13,6 +13,7 @@ final class TestMessageUiBuilder
 
         return [
             'type' => 'info',
+            'label' => 'Connection test',
             'content' =>
                 '<button type="button" class="btn btn-secondary ls-telegram-notify-test-message"' .
                 $surveyAttribute .

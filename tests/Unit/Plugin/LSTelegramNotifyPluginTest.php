@@ -43,6 +43,15 @@ class LSTelegramNotifyPluginTest extends TestCase
             'survey-specific plugin settings',
             $plugin->getSettingsDefinition()['DefaultText']['help']
         );
+        $this->assertArrayHasKey('ls-telegram-notify-message-settings-visibility', \Yii::$registeredScripts);
+        $this->assertStringContainsString(
+            "['ParseMode', 'DefaultText']",
+            \Yii::$registeredScripts['ls-telegram-notify-message-settings-visibility']['script']
+        );
+        $this->assertStringContainsString(
+            'SendMessage',
+            \Yii::$registeredScripts['ls-telegram-notify-message-settings-visibility']['script']
+        );
     }
 
     public function testAfterSurveyCompleteSkipsProcessingWhenNotificationsAreDisabled(): void
@@ -354,17 +363,34 @@ class LSTelegramNotifyPluginTest extends TestCase
 
         $this->assertIsArray($definition);
         $this->assertSame(LSTelegramNotifyPluginDouble::class, $definition['name']);
+        $this->assertSame([
+            'Enable',
+            'SettingsInfo',
+            'AuthToken',
+            'ChatId',
+            'TestMessage',
+            'SendMessage',
+            'ParseMode',
+            'DefaultText',
+            'SendPdf',
+            'SendCsv',
+        ], array_keys($definition['settings']));
         $this->assertTrue($definition['settings']['Enable']['current']);
-        $this->assertSame('Enable telegram notifications', $definition['settings']['Enable']['label']);
-        $this->assertSame('Auth Token', $definition['settings']['AuthToken']['label']);
+        $this->assertSame('Enable Telegram notifications', $definition['settings']['Enable']['label']);
+        $this->assertSame('Bot token', $definition['settings']['AuthToken']['label']);
         $this->assertSame('bot-token', $definition['settings']['AuthToken']['current']);
+        $this->assertSame('Chat ID', $definition['settings']['ChatId']['label']);
         $this->assertSame('chat-42', $definition['settings']['ChatId']['current']);
+        $this->assertSame('Send a custom message', $definition['settings']['SendMessage']['label']);
+        $this->assertStringContainsString('Enable this to choose the message format', $definition['settings']['SendMessage']['help']);
+        $this->assertSame('Message format', $definition['settings']['ParseMode']['label']);
         $this->assertSame('Markdown', $definition['settings']['ParseMode']['current']);
         $this->assertSame('Text', $definition['settings']['ParseMode']['options']['Text']);
+        $this->assertSame('Message template', $definition['settings']['DefaultText']['label']);
+        $this->assertSame('Mensagem padrão', $definition['settings']['DefaultText']['current']);
         $this->assertFalse($definition['settings']['SendPdf']['current']);
         $this->assertFalse($definition['settings']['SendCsv']['current']);
         $this->assertFalse($definition['settings']['SendMessage']['current']);
-        $this->assertSame('Mensagem padrão', $definition['settings']['DefaultText']['current']);
         $this->assertStringContainsString('{{urlAttachments}}', $definition['settings']['DefaultText']['help']);
         $this->assertStringContainsString('{{FIELD_CODE_answer}}', $definition['settings']['DefaultText']['help']);
         $this->assertStringContainsString('CONTATO[EMAIL]', $definition['settings']['DefaultText']['help']);

@@ -3,6 +3,9 @@ import test from 'node:test';
 import {
   buildPluginInstallInputSelector,
   buildPluginActionSelector,
+  enableCustomMessageSettings,
+  fillTelegramConnectionSettings,
+  getPluginSettingContainer,
   extractPluginInstallRequest,
   getPluginManagerPageUrl,
   getPluginManagerScanFilesUrl,
@@ -90,6 +93,137 @@ test('isPluginActionDisabled detects the disabled dropdown class', () => {
 test('shouldIgnorePageErrorMessage filters the known CKEditor language error only', () => {
   assert.equal(shouldIgnorePageErrorMessage("Cannot read properties of null (reading 'langEntries')"), true);
   assert.equal(shouldIgnorePageErrorMessage('Something else exploded'), false);
+});
+
+test('fillTelegramConnectionSettings follows the current settings labels', async () => {
+  const fills = [];
+  const page = {
+    getByRole(role, options) {
+      assert.equal(role, 'textbox');
+
+      return {
+        async fill(value) {
+          fills.push([options.name, value]);
+        },
+      };
+    },
+  };
+
+  await fillTelegramConnectionSettings(page, {
+    authToken: 'masked-token',
+    chatId: '-10042',
+  });
+
+  assert.deepEqual(fills, [
+    ['Bot token', 'masked-token'],
+    ['Chat ID', '-10042'],
+  ]);
+});
+
+test('enableCustomMessageSettings waits for hidden setting containers and reveals them after enabling the message', async () => {
+  let enabled = false;
+  const waits = [];
+
+  const sendMessage = {
+    async check() {
+      enabled = true;
+    },
+  };
+
+  const buildContainer = (name) => ({
+    async waitFor(options) {
+      waits.push([name, options]);
+      assert.equal(enabled, options.state === 'visible');
+    },
+  });
+
+  const formatContainer = buildContainer('format');
+  const templateContainer = buildContainer('template');
+  const messageTemplate = {};
+
+  const buildField = (container) => ({
+    first() {
+      return this;
+    },
+    locator() {
+      return container;
+    },
+  });
+
+  const page = {
+    locator(selector) {
+      return selector.includes('ParseMode')
+        ? buildField(formatContainer)
+        : buildField(templateContainer);
+    },
+    getByRole(role, options) {
+      if (role === 'checkbox') {
+        assert.deepEqual(options, { name: 'Send a custom message' });
+        return sendMessage;
+      }
+
+      assert.equal(role, 'textbox');
+      assert.deepEqual(options, { name: 'Message template' });
+      return messageTemplate;
+    },
+  };
+
+  const result = await enableCustomMessageSettings(page);
+
+  assert.equal(result, messageTemplate);
+  assert.deepEqual(waits, [
+    ['format', { state: 'hidden' }],
+    ['template', { state: 'hidden' }],
+    ['format', { state: 'visible' }],
+    ['template', { state: 'visible' }],
+  ]);
+});
+
+test('enableCustomMessageSettings stops when the initial hidden state cannot be reached', async () => {
+  let checked = false;
+  const visibilityError = new Error('field did not become hidden');
+  const failingContainer = {
+    async waitFor(options) {
+      assert.deepEqual(options, { state: 'hidden' });
+      throw visibilityError;
+    },
+  };
+  const unusedContainer = {
+    async waitFor() {},
+  };
+  const buildField = (container) => ({
+    first() {
+      return this;
+    },
+    locator() {
+      return container;
+    },
+  });
+
+  const page = {
+    locator(selector) {
+      return selector.includes('ParseMode')
+        ? buildField(failingContainer)
+        : buildField(unusedContainer);
+    },
+    getByRole(role) {
+      if (role === 'checkbox') {
+        return {
+          async check() {
+            checked = true;
+          },
+        };
+      }
+
+      return {};
+    },
+  };
+
+  await assert.rejects(
+    () => enableCustomMessageSettings(page),
+    visibilityError
+  );
+  assert.equal(checked, false);
 });
 
 test('login retries when the first fresh-stack attempt stays on the login page', async () => {

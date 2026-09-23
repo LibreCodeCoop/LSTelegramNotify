@@ -88,19 +88,27 @@ test('comparePngBuffers can tolerate a small diff ratio', () => {
   assert.equal(result.diffPixels, 1);
 });
 
-test('comparePngBuffers fails when image dimensions differ', () => {
+test('comparePngBuffers generates a visual diff when image dimensions differ', () => {
   const expectedBuffer = createPngBuffer(1, 1, [
     [255, 255, 255, 255],
   ]);
   const actualBuffer = createPngBuffer(2, 1, [
     [255, 255, 255, 255],
-    [255, 255, 255, 255],
+    [0, 0, 0, 255],
   ]);
 
-  const result = comparePngBuffers(expectedBuffer, actualBuffer);
+  const result = comparePngBuffers(expectedBuffer, actualBuffer, {
+    pixelmatchThreshold: 0,
+  });
 
   assert.equal(result.matches, false);
-  assert.equal(result.diffPixels, Number.POSITIVE_INFINITY);
+  assert.equal(result.diffPixels, 1);
+  assert.equal(result.diffPixelRatio, 0.5);
   assert.match(result.reason, /Image dimensions differ/);
-  assert.equal(result.diffBuffer, null);
+  assert.ok(result.diffBuffer);
+
+  const diffImage = PNG.sync.read(result.diffBuffer);
+
+  assert.equal(diffImage.width, 2);
+  assert.equal(diffImage.height, 1);
 });

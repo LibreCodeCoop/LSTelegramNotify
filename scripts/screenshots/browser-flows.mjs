@@ -289,6 +289,37 @@ async function waitForDocumentFonts(page) {
   });
 }
 
+export async function fillTelegramConnectionSettings(page, maskedSettingsValues) {
+  await page.getByRole('textbox', { name: 'Bot token' }).fill(maskedSettingsValues.authToken);
+  await page.getByRole('textbox', { name: 'Chat ID' }).fill(maskedSettingsValues.chatId);
+}
+
+export function getPluginSettingContainer(page, settingName) {
+  const settingField = page.locator(
+    `[name="${settingName}"], [name$="[${settingName}]"]`
+  ).first();
+
+  return settingField.locator(
+    'xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " mb-3 ") or contains(concat(" ", normalize-space(@class), " "), " form-group ")][1]'
+  );
+}
+
+export async function enableCustomMessageSettings(page) {
+  const sendMessage = page.getByRole('checkbox', { name: 'Send a custom message' });
+  const messageFormatContainer = getPluginSettingContainer(page, 'ParseMode');
+  const messageTemplateContainer = getPluginSettingContainer(page, 'DefaultText');
+  const messageTemplate = page.getByRole('textbox', { name: 'Message template' });
+
+  await messageFormatContainer.waitFor({ state: 'hidden' });
+  await messageTemplateContainer.waitFor({ state: 'hidden' });
+
+  await sendMessage.check();
+  await messageFormatContainer.waitFor({ state: 'visible' });
+  await messageTemplateContainer.waitFor({ state: 'visible' });
+
+  return messageTemplate;
+}
+
 export async function captureSettingsScreenshot(page, {
   configureUrl,
   pluginName,
@@ -299,10 +330,9 @@ export async function captureSettingsScreenshot(page, {
   await page.goto(configureUrl, { waitUntil: 'networkidle' });
   await page.getByRole('tab', { name: 'Settings' }).click();
 
-  await page.getByRole('textbox', { name: 'Auth Token' }).fill(maskedSettingsValues.authToken);
-  await page.getByRole('textbox', { name: 'Chat id' }).fill(maskedSettingsValues.chatId);
+  await fillTelegramConnectionSettings(page, maskedSettingsValues);
 
-  const defaultTextField = page.getByRole('textbox', { name: 'Default Text' });
+  const defaultTextField = await enableCustomMessageSettings(page);
 
   await defaultTextField.fill(maskedSettingsValues.defaultText);
   await defaultTextField.evaluate((element) => {
