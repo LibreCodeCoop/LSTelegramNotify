@@ -12,6 +12,7 @@ on:
 
 permissions:
   actions: read
+  contents: write
   pull-requests: write
 
 jobs:
@@ -36,23 +37,71 @@ jobs:
             echo "found=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Checkout report branch base
+        if: steps.artifacts.outputs.found == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          path: report-repo
+          fetch-depth: 1
+
+      - name: Publish screenshot report images
+        if: steps.artifacts.outputs.found == 'true'
+        id: publish
+        env:
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          REPORT_BRANCH: screenshot-reports
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cd report-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git ls-remote --exit-code --heads origin "$REPORT_BRANCH" >/dev/null 2>&1; then
+            git fetch --depth=1 origin "$REPORT_BRANCH"
+            git switch -C "$REPORT_BRANCH" FETCH_HEAD
+          else
+            git switch --orphan "$REPORT_BRANCH"
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+
+          report_dir="pr-$PR_NUMBER/run-$RUN_ID"
+          mkdir -p "$report_dir"
+          cp ../screenshot-artifacts/*.png "$report_dir"/
+
+          cat > "$report_dir/README.md" <<EOF
+          Screenshot comparison generated for PR #$PR_NUMBER from workflow run $RUN_ID.
+          EOF
+
+          git add "$report_dir"
+          git commit -m "docs: screenshot report for PR #$PR_NUMBER run $RUN_ID"
+          git push origin "HEAD:$REPORT_BRANCH"
+
+          echo "base_url=https://raw.githubusercontent.com/$GH_REPO/$REPORT_BRANCH/$report_dir" >> "$GITHUB_OUTPUT"
+
       - name: Comment on pull request
         if: steps.artifacts.outputs.found == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          REPORT_BASE_URL: ${{ steps.publish.outputs.base_url }}
         shell: bash
         run: |
           set -euo pipefail
 
-          cat > screenshot-comment.md <<'EOF'
+          cat > screenshot-comment.md <<EOF
           ## Documentation screenshot check failed
 
           One or more generated documentation screenshots differ from the committed versions.
-          EOF
 
-          attachments=()
+          The images below are published from the workflow artifact so they can be reviewed directly in this PR.
+          EOF
 
           add_report() {
             local key="$1"
@@ -68,42 +117,44 @@ jobs:
             cat >> screenshot-comment.md <<EOF
 
           ### $label
-
-          #### Expected
-
-          ![Expected $label](./$expected)
-
-          #### Generated
-
-          ![Generated $label](./$actual)
           EOF
 
             if [[ -f "$expected" ]]; then
-              attachments+=("--attach" "./$expected#Expected $label")
+              cat >> screenshot-comment.md <<EOF
+
+          #### Committed
+
+          ![Committed $label]($REPORT_BASE_URL/$key.expected.png?run=$RUN_ID)
+          EOF
             fi
 
-            attachments+=("--attach" "./$actual#Generated $label")
+            cat >> screenshot-comment.md <<EOF
+
+          #### Generated
+
+          ![Generated $label]($REPORT_BASE_URL/$key.actual.png?run=$RUN_ID)
+          EOF
 
             if [[ -f "$diff" ]]; then
               cat >> screenshot-comment.md <<EOF
 
-          #### Diff
+          #### Difference
 
-          ![Visual diff for $label](./$diff)
+          ![Visual difference for $label]($REPORT_BASE_URL/$key.diff.png?run=$RUN_ID)
           EOF
-              attachments+=("--attach" "./$diff#Visual diff for $label")
             fi
           }
 
           add_report settings "Plugin settings"
           add_report preview "Telegram preview"
 
-          cat >> screenshot-comment.md <<'EOF'
+          cat >> screenshot-comment.md <<EOF
+
+          [Download the workflow artifact](https://github.com/$GH_REPO/actions/runs/$RUN_ID)
 
           If the visual change is expected, run `npm run screenshots:update` and commit the updated PNG files.
           EOF
 
           gh pr comment "$PR_NUMBER" \
             --repo "$GH_REPO" \
-            --body-file screenshot-comment.md \
-            "${attachments[@]}"
+            --body-file screenshot-comment.md
