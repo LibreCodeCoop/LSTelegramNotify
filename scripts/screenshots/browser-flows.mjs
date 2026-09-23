@@ -314,8 +314,8 @@ export async function captureSettingsScreenshot(page, {
   await page.goto(configureUrl, { waitUntil: 'networkidle' });
   await page.getByRole('tab', { name: 'Settings' }).click();
 
-  await page.getByRole('textbox', { name: 'Auth Token' }).fill(maskedSettingsValues.authToken);
-  await page.getByRole('textbox', { name: 'Chat id' }).fill(maskedSettingsValues.chatId);
+  await page.getByRole('textbox', { name: 'Bot token' }).fill(maskedSettingsValues.authToken);
+  await page.getByRole('textbox', { name: 'Chat ID' }).fill(maskedSettingsValues.chatId);
 
   const defaultTextField = await enableCustomMessageSettings(page);
 
