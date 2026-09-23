@@ -31,7 +31,7 @@ The image below is a locally generated preview of a rendered Telegram message us
 2. Add the bot to the Telegram group that should receive survey notifications.
 3. Get the group chat ID. One option is to temporarily add [@RawDataBot](https://t.me/RawDataBot) to the group, read the `chat.id` value it reports, and remove the bot afterwards.
 4. Open the LSTelegramNotify settings in LimeSurvey.
-5. Set `Auth Token` to the token created by BotFather and `Chat id` to the destination group ID.
+5. Set `Bot token` to the token created by BotFather and `Chat ID` to the destination group ID.
 6. Enable `Send a custom message` if you want a Telegram message for each completed response. When enabled, choose the `Message format` and edit the `Message template`.
 7. Enable the PDF and CSV options independently if you also want those files sent with each completed response.
 8. Save the settings, then use `Send test message` to verify that the saved bot token and chat destination work before relying on survey notifications.
