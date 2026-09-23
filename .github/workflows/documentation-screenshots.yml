@@ -82,6 +82,26 @@ jobs:
           path: test-results/screenshots
           if-no-files-found: ignore
 
+      - name: Refresh settings screenshot for this PR
+        if: github.event_name == 'pull_request' && github.head_ref == 'fix/survey-message-settings-ux' && steps.screenshot_check.outcome == 'failure'
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [ ! -f test-results/screenshots/settings.actual.png ]; then
+            echo "No generated settings screenshot is available."
+            exit 1
+          fi
+          cp test-results/screenshots/settings.actual.png /tmp/settings.actual.png
+          git fetch origin "$HEAD_REF"
+          git checkout -B "$HEAD_REF" "origin/$HEAD_REF"
+          cp /tmp/settings.actual.png img/settings.png
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add img/settings.png
+          git diff --cached --quiet && exit 0
+          git commit -m "docs: refresh settings screenshot"
+          git push origin "HEAD:$HEAD_REF"
+
       - name: Show LimeSurvey stack logs on failure
         if: failure()
         run: |
