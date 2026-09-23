@@ -289,6 +289,22 @@ async function waitForDocumentFonts(page) {
   });
 }
 
+export async function enableCustomMessageSettings(page) {
+  const sendMessage = page.getByRole('checkbox', { name: 'Send a custom message' });
+  const messageFormat = page.getByLabel('Message format');
+  const messageTemplate = page.getByRole('textbox', { name: 'Message template' });
+
+  if (!(await messageFormat.isHidden()) || !(await messageTemplate.isHidden())) {
+    throw new Error('Custom message fields must stay hidden until Send a custom message is enabled.');
+  }
+
+  await sendMessage.check();
+  await messageFormat.waitFor({ state: 'visible' });
+  await messageTemplate.waitFor({ state: 'visible' });
+
+  return messageTemplate;
+}
+
 export async function captureSettingsScreenshot(page, {
   configureUrl,
   pluginName,
@@ -302,9 +318,7 @@ export async function captureSettingsScreenshot(page, {
   await page.getByRole('textbox', { name: 'Auth Token' }).fill(maskedSettingsValues.authToken);
   await page.getByRole('textbox', { name: 'Chat id' }).fill(maskedSettingsValues.chatId);
 
-  await page.getByRole('checkbox', { name: 'Send a custom message' }).check();
-
-  const defaultTextField = page.getByRole('textbox', { name: 'Message template' });
+  const defaultTextField = await enableCustomMessageSettings(page);
 
   await defaultTextField.fill(maskedSettingsValues.defaultText);
   await defaultTextField.evaluate((element) => {
