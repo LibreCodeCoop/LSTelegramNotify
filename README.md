@@ -25,6 +25,18 @@ The image below is a locally generated preview of a rendered Telegram message us
 - Activate the plugin at the Limesurvey plugin manager (requires proper user rights for accessing the feature at the Limesurvey admin interface).
 - Configure the plugin at the settings page
 
+## Configuration
+
+1. Create a Telegram bot with [@BotFather](https://t.me/BotFather) and copy the bot token.
+2. Add the bot to the Telegram group that should receive survey notifications.
+3. Get the group chat ID. One option is to temporarily add [@RawDataBot](https://t.me/RawDataBot) to the group, read the `chat.id` value it reports, and remove the bot afterwards.
+4. Open the LSTelegramNotify settings in LimeSurvey.
+5. Set `Auth Token` to the token created by BotFather and `Chat id` to the destination group ID.
+6. Choose the parse mode and notification options you want, then save the settings.
+7. Use `Send test message` to verify that the saved bot token and chat destination work before relying on survey notifications.
+
+The README screenshots below show the current plugin settings and a rendered Telegram notification example. They are generated and validated automatically by the repository screenshot workflow.
+
 ## Development
 
 The linters, static analysis and test tools are managed as isolated
