@@ -48,5 +48,3 @@ Useful optional overrides:
 
 When validation fails, the workflow summary tells you which command to run next and uploads diff artifacts under `test-results/screenshots/`.
 
-For pull requests, the `Screenshot failure comment` workflow consumes those artifacts from the completed `Documentation Screenshots` run and posts a single PR comment with the committed screenshot, the generated screenshot, and the visual diff for each failed target. The images are published to the dedicated `screenshot-reports` branch so GitHub can render them inline in the comment. The comment is updated on subsequent failures and removed automatically after the screenshot workflow passes again.
-
