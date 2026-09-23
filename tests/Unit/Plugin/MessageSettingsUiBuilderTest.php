@@ -12,6 +12,8 @@ final class MessageSettingsUiBuilderTest extends TestCase
         $script = (new MessageSettingsUiBuilder())->buildScript();
 
         $this->assertStringContainsString('SendMessage', $script);
+        $this->assertStringContainsString("filter(':checkbox')", $script);
+        $this->assertStringContainsString('input[type="checkbox"][name$="[SendMessage]"]', $script);
         $this->assertStringContainsString("['ParseMode', 'DefaultText']", $script);
         $this->assertStringContainsString('.toggle(enabled)', $script);
         $this->assertStringContainsString('change.lsTelegramNotifyMessageSettings', $script);
