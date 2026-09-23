@@ -22,7 +22,7 @@ final class MessageSettingsUiBuilderTest extends TestCase
     {
         $script = (new MessageSettingsUiBuilder())->buildScript();
 
-        $this->assertStringContainsString("'[name=\"' + settingName + '\"]'", $script);
+        $this->assertStringContainsString("'[name=\"' + settingName + '\"], '", $script);
         $this->assertStringContainsString("'[name$=\"[' + settingName + ']\"]'", $script);
     }
 
