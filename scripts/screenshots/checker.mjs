@@ -16,12 +16,9 @@ export function comparePngBuffers(expectedBuffer, actualBuffer, {
   if (expectedImage.width !== actualImage.width || expectedImage.height !== actualImage.height) {
     return {
       matches: false,
-      type: 'size',
       reason: `Image dimensions differ: expected ${expectedImage.width}x${expectedImage.height}, got ${actualImage.width}x${actualImage.height}`,
       diffPixels: Number.POSITIVE_INFINITY,
       diffPixelRatio: 1,
-      expectedSize: { width: expectedImage.width, height: expectedImage.height },
-      actualSize: { width: actualImage.width, height: actualImage.height },
       diffBuffer: null,
     };
   }
@@ -41,14 +38,11 @@ export function comparePngBuffers(expectedBuffer, actualBuffer, {
 
   return {
     matches,
-    type: 'pixels',
     reason: matches
       ? null
       : `Detected ${diffPixels} different pixels (${(diffPixelRatio * 100).toFixed(4)}% of the image).`,
     diffPixels,
     diffPixelRatio,
-    expectedSize: { width: expectedImage.width, height: expectedImage.height },
-    actualSize: { width: actualImage.width, height: actualImage.height },
     diffBuffer: PNG.sync.write(diffImage),
   };
 }
@@ -67,21 +61,12 @@ export async function assertScreenshotsUpToDate(config, { logger = console, brow
     try {
       expectedBuffer = await readFile(screenshot.outputPath);
     } catch (error) {
-      const actualImage = PNG.sync.read(screenshot.buffer);
-
       failures.push({
         screenshot,
         reason: `Missing committed screenshot at ${screenshot.relativeOutputPath}.`,
         actualBuffer: screenshot.buffer,
         expectedBuffer: null,
         diffBuffer: null,
-        comparison: {
-          type: 'missing',
-          diffPixels: null,
-          diffPixelRatio: null,
-          expectedSize: null,
-          actualSize: { width: actualImage.width, height: actualImage.height },
-        },
       });
       continue;
     }
@@ -103,7 +88,6 @@ export async function assertScreenshotsUpToDate(config, { logger = console, brow
       expectedBuffer,
       actualBuffer: screenshot.buffer,
       diffBuffer: result.diffBuffer,
-      comparison: result,
     });
   }
 
@@ -127,27 +111,6 @@ export async function assertScreenshotsUpToDate(config, { logger = console, brow
     if (failure.diffBuffer) {
       await writeFile(`${artifactPrefix}.diff.png`, failure.diffBuffer);
     }
-
-    await writeFile(
-      `${artifactPrefix}.report.json`,
-      JSON.stringify({
-        key: failure.screenshot.key,
-        path: failure.screenshot.relativeOutputPath,
-        type: failure.comparison.type,
-        reason: failure.reason,
-        diffPixels: Number.isFinite(failure.comparison.diffPixels)
-          ? failure.comparison.diffPixels
-          : null,
-        diffPixelRatio: failure.comparison.diffPixelRatio,
-        expectedSize: failure.comparison.expectedSize,
-        actualSize: failure.comparison.actualSize,
-        limits: {
-          pixelmatchThreshold: config.pixelmatchThreshold,
-          maxDiffPixels: config.maxDiffPixels,
-          maxDiffPixelRatio: config.maxDiffPixelRatio,
-        },
-      }, null, 2)
-    );
 
     const artifactDir = path.relative(config.repoRoot, config.screenshotDiffDir);
     failureLines.push(`- ${failure.screenshot.relativeOutputPath}: ${failure.reason} Diff artifacts: ${artifactDir}/`);
