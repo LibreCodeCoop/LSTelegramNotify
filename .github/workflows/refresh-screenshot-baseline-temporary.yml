@@ -8,6 +8,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: refresh-screenshot-baseline-pr-22
+  cancel-in-progress: true
+
 jobs:
   refresh:
     runs-on: ubuntu-latest
@@ -73,7 +77,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add img
           git commit -m "docs: refresh generated screenshots"
-          git push
+          git pull --rebase origin fix/survey-message-settings-ux
+          git push origin HEAD:fix/survey-message-settings-ux
 
       - name: Stop LimeSurvey test stack
         if: always()
