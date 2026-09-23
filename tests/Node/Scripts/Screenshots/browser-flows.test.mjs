@@ -93,7 +93,7 @@ test('shouldIgnorePageErrorMessage filters the known CKEditor language error onl
   assert.equal(shouldIgnorePageErrorMessage('Something else exploded'), false);
 });
 
-test('enableCustomMessageSettings requires hidden fields and reveals them after enabling the message', async () => {
+test('enableCustomMessageSettings waits for hidden fields and reveals them after enabling the message', async () => {
   let enabled = false;
   const waits = [];
 
@@ -103,25 +103,22 @@ test('enableCustomMessageSettings requires hidden fields and reveals them after 
     },
   };
 
-  const messageFormatLabel = {
-    async isHidden() {
-      return !enabled;
-    },
+  const buildDependentField = (name) => ({
     async waitFor(options) {
-      waits.push(['format', options]);
-      assert.equal(enabled, true);
-    },
-  };
+      waits.push([name, options]);
 
-  const messageTemplate = {
-    async isHidden() {
-      return !enabled;
-    },
-    async waitFor(options) {
-      waits.push(['template', options]);
+      if (options.state === 'hidden') {
+        assert.equal(enabled, false);
+        return;
+      }
+
+      assert.equal(options.state, 'visible');
       assert.equal(enabled, true);
     },
-  };
+  });
+
+  const messageFormatLabel = buildDependentField('format');
+  const messageTemplate = buildDependentField('template');
 
   const page = {
     getByRole(role, options) {
@@ -145,28 +142,36 @@ test('enableCustomMessageSettings requires hidden fields and reveals them after 
 
   assert.equal(result, messageTemplate);
   assert.deepEqual(waits, [
+    ['format', { state: 'hidden' }],
+    ['template', { state: 'hidden' }],
     ['format', { state: 'visible' }],
     ['template', { state: 'visible' }],
   ]);
 });
 
-test('enableCustomMessageSettings fails when dependent fields are visible while disabled', async () => {
+test('enableCustomMessageSettings stops when the initial hidden state cannot be reached', async () => {
+  let checked = false;
+  const visibilityError = new Error('field did not become hidden');
+
   const page = {
     getByRole(role) {
       if (role === 'checkbox') {
-        return { async check() {} };
+        return {
+          async check() {
+            checked = true;
+          },
+        };
       }
 
       return {
-        async isHidden() {
-          return false;
-        },
+        async waitFor() {},
       };
     },
     getByText() {
       return {
-        async isHidden() {
-          return false;
+        async waitFor(options) {
+          assert.deepEqual(options, { state: 'hidden' });
+          throw visibilityError;
         },
       };
     },
@@ -174,8 +179,9 @@ test('enableCustomMessageSettings fails when dependent fields are visible while 
 
   await assert.rejects(
     () => enableCustomMessageSettings(page),
-    /must stay hidden/
+    visibilityError
   );
+  assert.equal(checked, false);
 });
 
 test('login retries when the first fresh-stack attempt stays on the login page', async () => {
