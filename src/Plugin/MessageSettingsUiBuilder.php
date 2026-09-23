@@ -47,6 +47,24 @@ var updateLSTelegramNotifyMessageSettingsVisibility = function () {
 };
 
 $(updateLSTelegramNotifyMessageSettingsVisibility);
+
+if (window.MutationObserver && document.body) {
+    var lsTelegramNotifyMessageSettingsObserver = new MutationObserver(function (mutations) {
+        var hasAddedNodes = mutations.some(function (mutation) {
+            return mutation.addedNodes && mutation.addedNodes.length > 0;
+        });
+
+        if (hasAddedNodes) {
+            updateLSTelegramNotifyMessageSettingsVisibility();
+        }
+    });
+
+    lsTelegramNotifyMessageSettingsObserver.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+}
+
 $(document)
     .off(
         'change.lsTelegramNotifyMessageSettings',
