@@ -294,9 +294,8 @@ export async function enableCustomMessageSettings(page) {
   const messageFormatLabel = page.getByText('Message format', { exact: true });
   const messageTemplate = page.getByRole('textbox', { name: 'Message template' });
 
-  if (!(await messageFormatLabel.isHidden()) || !(await messageTemplate.isHidden())) {
-    throw new Error('Custom message fields must stay hidden until Send a custom message is enabled.');
-  }
+  await messageFormatLabel.waitFor({ state: 'hidden' });
+  await messageTemplate.waitFor({ state: 'hidden' });
 
   await sendMessage.check();
   await messageFormatLabel.waitFor({ state: 'visible' });
