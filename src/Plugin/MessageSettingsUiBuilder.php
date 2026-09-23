@@ -29,7 +29,9 @@ var findLSTelegramNotifySettingContainer = function ($field) {
 };
 
 var updateLSTelegramNotifyMessageSettingsVisibility = function () {
-    var $sendMessage = findLSTelegramNotifySettingField('SendMessage');
+    var $sendMessage = findLSTelegramNotifySettingField('SendMessage')
+        .filter(':checkbox')
+        .first();
 
     if (!$sendMessage.length) {
         return;
@@ -48,11 +50,11 @@ updateLSTelegramNotifyMessageSettingsVisibility();
 $(document)
     .off(
         'change.lsTelegramNotifyMessageSettings',
-        '[name$="[SendMessage]"], [name="SendMessage"]'
+        'input[type="checkbox"][name$="[SendMessage]"], input[type="checkbox"][name="SendMessage"]'
     )
     .on(
         'change.lsTelegramNotifyMessageSettings',
-        '[name$="[SendMessage]"], [name="SendMessage"]',
+        'input[type="checkbox"][name$="[SendMessage]"], input[type="checkbox"][name="SendMessage"]',
         updateLSTelegramNotifyMessageSettingsVisibility
     )
     .off('pjax:scriptcomplete.lsTelegramNotifyMessageSettings')
