@@ -19,6 +19,9 @@ final class MessageSettingsUiBuilderTest extends TestCase
         $this->assertStringContainsString('change.lsTelegramNotifyMessageSettings', $script);
         $this->assertStringContainsString('shown.bs.tab.lsTelegramNotifyMessageSettings', $script);
         $this->assertStringContainsString('pjax:scriptcomplete.lsTelegramNotifyMessageSettings', $script);
+        $this->assertStringContainsString('new MutationObserver', $script);
+        $this->assertStringContainsString('childList: true', $script);
+        $this->assertStringContainsString('subtree: true', $script);
     }
 
     public function testBuildScriptSupportsGlobalAndSurveySettingNames(): void
