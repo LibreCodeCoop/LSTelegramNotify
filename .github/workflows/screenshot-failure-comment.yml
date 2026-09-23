@@ -1,0 +1,265 @@
+# SPDX-FileCopyrightText: 2026 LibreCode coop and contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+name: Screenshot failure comment
+
+on:
+  workflow_run:
+    workflows:
+      - Documentation Screenshots
+    types:
+      - completed
+
+permissions:
+  actions: read
+  contents: write
+  pull-requests: write
+
+jobs:
+  comment:
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.pull_requests[0].number != null
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download screenshot artifacts
+        id: artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh run download "$RUN_ID" --repo "$GH_REPO" --name documentation-screenshot-diffs --dir screenshot-artifacts; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish screenshot report
+        if: steps.artifacts.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          REPORT_BRANCH: screenshot-reports
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          marker='<!-- documentation-screenshot-report -->'
+
+          if ! gh api "repos/$GH_REPO/git/ref/heads/$REPORT_BRANCH" >/dev/null 2>&1; then
+            default_branch="$(gh api "repos/$GH_REPO" --jq '.default_branch')"
+            default_sha="$(gh api "repos/$GH_REPO/git/ref/heads/$default_branch" --jq '.object.sha')"
+            gh api --method POST "repos/$GH_REPO/git/refs" \
+              -f ref="refs/heads/$REPORT_BRANCH" \
+              -f sha="$default_sha" >/dev/null
+          fi
+
+          upload_png() {
+            local file="$1"
+            local repo_path="$2"
+
+            if [[ "$(file --brief --mime-type "$file")" != "image/png" ]]; then
+              echo "Refusing to publish non-PNG file: $file" >&2
+              exit 1
+            fi
+
+            if (( $(stat -c '%s' "$file") > 5242880 )); then
+              echo "Refusing to publish PNG larger than 5 MiB: $file" >&2
+              exit 1
+            fi
+
+            local encoded
+            encoded="$(base64 -w 0 "$file")"
+
+            local existing_sha
+            existing_sha="$(gh api "repos/$GH_REPO/contents/$repo_path?ref=$REPORT_BRANCH" --jq '.sha' 2>/dev/null || true)"
+
+            if [[ -n "$existing_sha" ]]; then
+              jq -n \
+                --arg message "ci: update screenshot report for PR #$PR_NUMBER" \
+                --arg content "$encoded" \
+                --arg branch "$REPORT_BRANCH" \
+                --arg sha "$existing_sha" \
+                '{message: $message, content: $content, branch: $branch, sha: $sha}' |
+                gh api --method PUT "repos/$GH_REPO/contents/$repo_path" --input - >/dev/null
+            else
+              jq -n \
+                --arg message "ci: add screenshot report for PR #$PR_NUMBER" \
+                --arg content "$encoded" \
+                --arg branch "$REPORT_BRANCH" \
+                '{message: $message, content: $content, branch: $branch}' |
+                gh api --method PUT "repos/$GH_REPO/contents/$repo_path" --input - >/dev/null
+            fi
+          }
+
+          format_summary() {
+            local report="$1"
+
+            if [[ ! -f "$report" ]]; then
+              printf '%s' 'The generated screenshot differs from the committed image.'
+              return
+            fi
+
+            local type
+            type="$(jq -r '.type // ""' "$report")"
+
+            if [[ "$type" == "pixels" ]]; then
+              local changed total ratio max_ratio
+              changed="$(jq -r '.diffPixels // 0' "$report")"
+              ratio="$(jq -r '(.diffPixelRatio // 0) * 100' "$report")"
+              max_ratio="$(jq -r '(.limits.maxDiffPixelRatio // 0) * 100' "$report")"
+
+              if [[ "$changed" =~ ^[0-9]+$ && "$ratio" =~ ^[0-9]+([.][0-9]+)?$ && "$max_ratio" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+                printf '**Difference:** %.4f%% · **Allowed:** %.4f%% · %s pixels differ.' "$ratio" "$max_ratio" "$changed"
+                return
+              fi
+            elif [[ "$type" == "size" ]]; then
+              local ew eh aw ah
+              ew="$(jq -r '.expectedSize.width // 0' "$report")"
+              eh="$(jq -r '.expectedSize.height // 0' "$report")"
+              aw="$(jq -r '.actualSize.width // 0' "$report")"
+              ah="$(jq -r '.actualSize.height // 0' "$report")"
+
+              if [[ "$ew" =~ ^[0-9]+$ && "$eh" =~ ^[0-9]+$ && "$aw" =~ ^[0-9]+$ && "$ah" =~ ^[0-9]+$ ]]; then
+                printf '**Size changed:** %sx%s → %sx%s.' "$ew" "$eh" "$aw" "$ah"
+                return
+              fi
+            elif [[ "$type" == "missing" ]]; then
+              printf '%s' 'The committed screenshot is missing.'
+              return
+            fi
+
+            printf '%s' 'The generated screenshot differs from the committed image.'
+          }
+
+          report_root="pr-$PR_NUMBER"
+          raw_base="https://raw.githubusercontent.com/$GH_REPO/$REPORT_BRANCH/$report_root"
+          run_url="https://github.com/$GH_REPO/actions/runs/$RUN_ID"
+
+          cat > screenshot-comment.md <<EOF
+          $marker
+          ## Documentation screenshot check failed
+
+          [View workflow run]($run_url)
+
+          EOF
+
+          found_report=false
+
+          for key in settings preview; do
+            actual="screenshot-artifacts/$key.actual.png"
+            expected="screenshot-artifacts/$key.expected.png"
+            diff="screenshot-artifacts/$key.diff.png"
+            report="screenshot-artifacts/$key.report.json"
+
+            if [[ ! -f "$actual" ]]; then
+              continue
+            fi
+
+            found_report=true
+            case "$key" in
+              settings)
+                label="Plugin settings"
+                path_label="img/settings.png"
+                ;;
+              preview)
+                label="Telegram preview"
+                path_label="img/telegram_example.png"
+                ;;
+            esac
+
+            upload_png "$actual" "$report_root/$key/generated.png"
+            has_expected=false
+            has_diff=false
+
+            if [[ -f "$expected" ]]; then
+              upload_png "$expected" "$report_root/$key/expected.png"
+              has_expected=true
+            fi
+
+            if [[ -f "$diff" ]]; then
+              upload_png "$diff" "$report_root/$key/diff.png"
+              has_diff=true
+            fi
+
+            summary="$(format_summary "$report")"
+
+            cat >> screenshot-comment.md <<EOF
+          ### $label · `$path_label`
+
+          $summary
+
+          | Expected | Generated | Visual diff |
+          | --- | --- | --- |
+          EOF
+
+            expected_cell='Not available'
+            diff_cell='Not available'
+
+            if [[ "$has_expected" == "true" ]]; then
+              expected_cell="![Expected $label]($raw_base/$key/expected.png?run=$RUN_ID)"
+            fi
+
+            if [[ "$has_diff" == "true" ]]; then
+              diff_cell="![Visual diff for $label]($raw_base/$key/diff.png?run=$RUN_ID)"
+            fi
+
+            generated_cell="![Generated $label]($raw_base/$key/generated.png?run=$RUN_ID)"
+            printf '| %s | %s | %s |\n\n' "$expected_cell" "$generated_cell" "$diff_cell" >> screenshot-comment.md
+          done
+
+          if [[ "$found_report" != "true" ]]; then
+            echo "Screenshot artifact did not contain a recognized screenshot report." >&2
+            exit 1
+          fi
+
+          cat >> screenshot-comment.md <<'EOF'
+          If the visual change is expected, regenerate and commit the documentation screenshots with:
+
+          `npm run screenshots:update`
+          EOF
+
+          existing_comment_id="$(
+            gh api "repos/$GH_REPO/issues/$PR_NUMBER/comments" --paginate \
+              --jq '.[] | select(.body | contains("<!-- documentation-screenshot-report -->")) | .id' |
+              head -n 1
+          )"
+
+          if [[ -n "$existing_comment_id" ]]; then
+            jq -n --rawfile body screenshot-comment.md '{body: $body}' |
+              gh api --method PATCH "repos/$GH_REPO/issues/comments/$existing_comment_id" --input - >/dev/null
+          else
+            gh pr comment "$PR_NUMBER" --repo "$GH_REPO" --body-file screenshot-comment.md
+          fi
+
+          cat screenshot-comment.md >> "$GITHUB_STEP_SUMMARY"
+
+  cleanup:
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.pull_requests[0].number != null
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove stale screenshot failure comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          comment_ids="$(
+            gh api "repos/$GH_REPO/issues/$PR_NUMBER/comments" --paginate \
+              --jq '.[] | select(.body | contains("<!-- documentation-screenshot-report -->")) | .id'
+          )"
+
+          while IFS= read -r comment_id; do
+            [[ -z "$comment_id" ]] && continue
+            gh api --method DELETE "repos/$GH_REPO/issues/comments/$comment_id"
+          done <<< "$comment_ids"
