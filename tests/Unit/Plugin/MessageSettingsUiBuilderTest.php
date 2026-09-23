@@ -17,6 +17,7 @@ final class MessageSettingsUiBuilderTest extends TestCase
         $this->assertStringContainsString("['ParseMode', 'DefaultText']", $script);
         $this->assertStringContainsString('.toggle(enabled)', $script);
         $this->assertStringContainsString('change.lsTelegramNotifyMessageSettings', $script);
+        $this->assertStringContainsString('shown.bs.tab.lsTelegramNotifyMessageSettings', $script);
         $this->assertStringContainsString('pjax:scriptcomplete.lsTelegramNotifyMessageSettings', $script);
     }
 
