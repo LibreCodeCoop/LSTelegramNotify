@@ -182,8 +182,30 @@ test('enableCustomMessageSettings waits for hidden setting containers and reveal
 test('enableCustomMessageSettings stops when the initial hidden state cannot be reached', async () => {
   let checked = false;
   const visibilityError = new Error('field did not become hidden');
+  const failingContainer = {
+    async waitFor(options) {
+      assert.deepEqual(options, { state: 'hidden' });
+      throw visibilityError;
+    },
+  };
+  const unusedContainer = {
+    async waitFor() {},
+  };
+  const buildField = (container) => ({
+    first() {
+      return this;
+    },
+    locator() {
+      return container;
+    },
+  });
 
   const page = {
+    locator(selector) {
+      return selector.includes('ParseMode')
+        ? buildField(failingContainer)
+        : buildField(unusedContainer);
+    },
     getByRole(role) {
       if (role === 'checkbox') {
         return {
@@ -193,17 +215,7 @@ test('enableCustomMessageSettings stops when the initial hidden state cannot be 
         };
       }
 
-      return {
-        async waitFor() {},
-      };
-    },
-    getByText() {
-      return {
-        async waitFor(options) {
-          assert.deepEqual(options, { state: 'hidden' });
-          throw visibilityError;
-        },
-      };
+      return {};
     },
   };
 
