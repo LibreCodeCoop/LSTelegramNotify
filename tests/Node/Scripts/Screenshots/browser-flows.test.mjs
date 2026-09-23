@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   buildPluginInstallInputSelector,
   buildPluginActionSelector,
+  enableCustomMessageSettings,
   extractPluginInstallRequest,
   getPluginManagerPageUrl,
   getPluginManagerScanFilesUrl,
@@ -90,6 +91,97 @@ test('isPluginActionDisabled detects the disabled dropdown class', () => {
 test('shouldIgnorePageErrorMessage filters the known CKEditor language error only', () => {
   assert.equal(shouldIgnorePageErrorMessage("Cannot read properties of null (reading 'langEntries')"), true);
   assert.equal(shouldIgnorePageErrorMessage('Something else exploded'), false);
+});
+
+test('enableCustomMessageSettings requires hidden fields and reveals them after enabling the message', async () => {
+  let enabled = false;
+  const waits = [];
+
+  const sendMessage = {
+    async check() {
+      enabled = true;
+    },
+  };
+
+  const messageFormat = {
+    async isHidden() {
+      return !enabled;
+    },
+    async waitFor(options) {
+      waits.push(['format', options]);
+      assert.equal(enabled, true);
+    },
+  };
+
+  const messageTemplate = {
+    async isHidden() {
+      return !enabled;
+    },
+    async waitFor(options) {
+      waits.push(['template', options]);
+      assert.equal(enabled, true);
+    },
+  };
+
+  const page = {
+    getByRole(role, options) {
+      assert.equal(role, 'checkbox');
+      assert.deepEqual(options, { name: 'Send a custom message' });
+      return sendMessage;
+    },
+    getByLabel(label) {
+      assert.equal(label, 'Message format');
+      return messageFormat;
+    },
+    getByRole: undefined,
+  };
+
+  page.getByRole = (role, options) => {
+    if (role === 'checkbox') {
+      assert.deepEqual(options, { name: 'Send a custom message' });
+      return sendMessage;
+    }
+
+    assert.equal(role, 'textbox');
+    assert.deepEqual(options, { name: 'Message template' });
+    return messageTemplate;
+  };
+
+  const result = await enableCustomMessageSettings(page);
+
+  assert.equal(result, messageTemplate);
+  assert.deepEqual(waits, [
+    ['format', { state: 'visible' }],
+    ['template', { state: 'visible' }],
+  ]);
+});
+
+test('enableCustomMessageSettings fails when dependent fields are visible while disabled', async () => {
+  const page = {
+    getByRole(role) {
+      if (role === 'checkbox') {
+        return { async check() {} };
+      }
+
+      return {
+        async isHidden() {
+          return false;
+        },
+      };
+    },
+    getByLabel() {
+      return {
+        async isHidden() {
+          return false;
+        },
+      };
+    },
+  };
+
+  await assert.rejects(
+    () => enableCustomMessageSettings(page),
+    /must stay hidden/
+  );
 });
 
 test('login retries when the first fresh-stack attempt stays on the login page', async () => {
