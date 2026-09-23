@@ -1,0 +1,80 @@
+name: Refresh Screenshot Baseline (temporary)
+
+on:
+  push:
+    branches:
+      - fix/survey-message-settings-ux
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    env:
+      LIMESURVEY_BASE_URL: http://127.0.0.1:18080
+      LIMESURVEY_ADMIN_USER: admin
+      LIMESURVEY_ADMIN_PASSWORD: admin
+      LIMESURVEY_STACK_HOST_PORT: '18080'
+      PLAYWRIGHT_HEADLESS: 'true'
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.5
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-scripts
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Start LimeSurvey test stack
+        run: docker compose up -d --force-recreate
+
+      - name: Wait for LimeSurvey admin login page
+        run: >-
+          curl --fail --silent --show-error
+          --retry 60
+          --retry-all-errors
+          --retry-delay 2
+          "$LIMESURVEY_BASE_URL/index.php/admin/authentication/sa/login"
+          > /dev/null
+
+      - name: Refresh documentation screenshots
+        run: npm run screenshots:update
+
+      - name: Commit refreshed screenshots
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- img; then
+            echo "Screenshots are already up to date."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add img
+          git commit -m "docs: refresh generated screenshots"
+          git push
+
+      - name: Stop LimeSurvey test stack
+        if: always()
+        run: docker compose down -v
