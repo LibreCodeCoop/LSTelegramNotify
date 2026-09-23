@@ -14,12 +14,26 @@ export function comparePngBuffers(expectedBuffer, actualBuffer, {
   const actualImage = PNG.sync.read(actualBuffer);
 
   if (expectedImage.width !== actualImage.width || expectedImage.height !== actualImage.height) {
+    const width = Math.max(expectedImage.width, actualImage.width);
+    const height = Math.max(expectedImage.height, actualImage.height);
+    const expectedCanvas = normalizePngCanvas(expectedImage, width, height);
+    const actualCanvas = normalizePngCanvas(actualImage, width, height);
+    const diffImage = new PNG({ width, height });
+    const diffPixels = pixelmatch(
+      expectedCanvas.data,
+      actualCanvas.data,
+      diffImage.data,
+      width,
+      height,
+      { threshold: pixelmatchThreshold }
+    );
+
     return {
       matches: false,
       reason: `Image dimensions differ: expected ${expectedImage.width}x${expectedImage.height}, got ${actualImage.width}x${actualImage.height}`,
-      diffPixels: Number.POSITIVE_INFINITY,
-      diffPixelRatio: 1,
-      diffBuffer: null,
+      diffPixels,
+      diffPixelRatio: diffPixels / (width * height),
+      diffBuffer: PNG.sync.write(diffImage),
     };
   }
 
@@ -45,6 +59,21 @@ export function comparePngBuffers(expectedBuffer, actualBuffer, {
     diffPixelRatio,
     diffBuffer: PNG.sync.write(diffImage),
   };
+}
+
+function normalizePngCanvas(image, width, height) {
+  const canvas = new PNG({ width, height });
+
+  for (let index = 0; index < canvas.data.length; index += 4) {
+    canvas.data[index] = 255;
+    canvas.data[index + 1] = 255;
+    canvas.data[index + 2] = 255;
+    canvas.data[index + 3] = 255;
+  }
+
+  PNG.bitblt(image, canvas, 0, 0, image.width, image.height, 0, 0);
+
+  return canvas;
 }
 
 export async function assertScreenshotsUpToDate(config, { logger = console, browserType } = {}) {
