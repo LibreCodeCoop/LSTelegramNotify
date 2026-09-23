@@ -125,26 +125,19 @@ test('enableCustomMessageSettings requires hidden fields and reveals them after 
 
   const page = {
     getByRole(role, options) {
-      assert.equal(role, 'checkbox');
-      assert.deepEqual(options, { name: 'Send a custom message' });
-      return sendMessage;
+      if (role === 'checkbox') {
+        assert.deepEqual(options, { name: 'Send a custom message' });
+        return sendMessage;
+      }
+
+      assert.equal(role, 'textbox');
+      assert.deepEqual(options, { name: 'Message template' });
+      return messageTemplate;
     },
     getByLabel(label) {
       assert.equal(label, 'Message format');
       return messageFormat;
     },
-    getByRole: undefined,
-  };
-
-  page.getByRole = (role, options) => {
-    if (role === 'checkbox') {
-      assert.deepEqual(options, { name: 'Send a custom message' });
-      return sendMessage;
-    }
-
-    assert.equal(role, 'textbox');
-    assert.deepEqual(options, { name: 'Message template' });
-    return messageTemplate;
   };
 
   const result = await enableCustomMessageSettings(page);
