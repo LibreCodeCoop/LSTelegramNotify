@@ -15,6 +15,7 @@ class LSTelegramNotifyPluginTest extends TestCase
     {
         \Survey::$findByPkHandler = null;
         \Permission::$hasSurveyPermissionHandler = null;
+        \Permission::$hasGlobalPermissionHandler = null;
         \AppRuntimeMock::$createAbsoluteUrlHandler = null;
         \AppRuntimeMock::$pluginManager = null;
         \FieldMapRuntimeMock::$createFieldMapHandler = null;
@@ -419,6 +420,128 @@ class LSTelegramNotifyPluginTest extends TestCase
         $this->assertSame(
             'LimeSurvey\\PluginManager\\DbStorage',
             $storageProperty->getValue($plugin)
+        );
+    }
+
+    public function testSendTestMessageUsesSavedGlobalSettings(): void
+    {
+        $plugin = new class extends LSTelegramNotifyPluginDouble {
+            /** @var string[] */
+            public array $apiTokens = [];
+
+            /** @var array<int, array<string, mixed>> */
+            public array $telegramRequests = [];
+
+            protected function createTelegramApi(string $authToken): Api
+            {
+                $this->apiTokens[] = $authToken;
+
+                return new Api(function (array $params): array {
+                    $this->telegramRequests[] = $params;
+
+                    return ['ok' => true];
+                });
+            }
+        };
+        $plugin->setMockedSettings([
+            'AuthToken' => 'saved-token',
+            'ChatId' => 'saved-chat',
+        ]);
+
+        $request = new class {
+            public function getPost(string $name, $default = null)
+            {
+                return $default;
+            }
+        };
+
+        $response = $plugin->sendTestMessage($request);
+
+        $this->assertSame(
+            ['success' => true, 'message' => 'Test message sent successfully.'],
+            json_decode($response, true)
+        );
+        $this->assertSame(['saved-token'], $plugin->apiTokens);
+        $this->assertSame([
+            [
+                'chat_id' => 'saved-chat',
+                'text' => 'LSTelegramNotify test message' . "\n\n" . 'Telegram configuration is working correctly.',
+            ],
+        ], $plugin->telegramRequests);
+    }
+
+    public function testSendTestMessageRejectsMissingSavedSettings(): void
+    {
+        $plugin = $this->newPlugin();
+        $plugin->setMockedSettings([
+            'AuthToken' => '',
+            'ChatId' => '',
+        ]);
+
+        $request = new class {
+            public function getPost(string $name, $default = null)
+            {
+                return $default;
+            }
+        };
+
+        $response = $plugin->sendTestMessage($request);
+
+        $this->assertSame(
+            ['success' => false, 'message' => 'Auth Token and Chat id must be saved before testing.'],
+            json_decode($response, true)
+        );
+    }
+
+    public function testSendTestMessageChecksSurveyPermission(): void
+    {
+        $plugin = $this->newPlugin();
+        $capturedPermission = null;
+        \Permission::$hasSurveyPermissionHandler = static function ($surveyId, $permission, $crud) use (&$capturedPermission): bool {
+            $capturedPermission = [$surveyId, $permission, $crud];
+
+            return false;
+        };
+
+        $request = new class {
+            public function getPost(string $name, $default = null)
+            {
+                return $name === 'surveyId' ? '77' : $default;
+            }
+        };
+
+        $response = $plugin->sendTestMessage($request);
+
+        $this->assertSame([77, 'surveysettings', 'update'], $capturedPermission);
+        $this->assertSame(
+            ['success' => false, 'message' => 'You do not have permission to test Telegram settings for this survey.'],
+            json_decode($response, true)
+        );
+    }
+
+    public function testSendTestMessageChecksGlobalSettingsPermission(): void
+    {
+        $plugin = $this->newPlugin();
+        $capturedPermission = null;
+        \Permission::$hasGlobalPermissionHandler = static function ($permission, $crud) use (&$capturedPermission): bool {
+            $capturedPermission = [$permission, $crud];
+
+            return false;
+        };
+
+        $request = new class {
+            public function getPost(string $name, $default = null)
+            {
+                return $default;
+            }
+        };
+
+        $response = $plugin->sendTestMessage($request);
+
+        $this->assertSame(['settings', 'update'], $capturedPermission);
+        $this->assertSame(
+            ['success' => false, 'message' => 'You do not have permission to test the global Telegram settings.'],
+            json_decode($response, true)
         );
     }
 

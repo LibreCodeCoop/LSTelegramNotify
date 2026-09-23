@@ -5,13 +5,14 @@ namespace LibreCodeCoop\LSTelegramNotify\Plugin;
 use LibreCodeCoop\LSTelegramNotify\Survey\SurveyFieldPlaceholderCatalogProvider;
 use LibreCodeCoop\LSTelegramNotify\Survey\SurveyFieldValueProvider;
 use LibreCodeCoop\LSTelegramNotify\Template\MessageTemplateRenderer;
+use LibreCodeCoop\LSTelegramNotify\Telegram\TelegramTestMessageSender;
 use Telegram\Bot\Api;
 use Telegram\Bot\FileUpload\InputFile;
 
 class LSTelegramNotifyPlugin extends \PluginBase
 {
 	/** @var string[]|null */
-	public $allowedPublicMethods = ['saveSurveyPluginSettings'];
+	public $allowedPublicMethods = ['saveSurveyPluginSettings', 'sendTestMessage'];
 
 	/**
 	 * @var string
@@ -46,6 +47,10 @@ class LSTelegramNotifyPlugin extends \PluginBase
 			'type' => 'string',
 			'label' => 'Chat id',
 			'help' => 'The ID of group that will receive the notification messages. You can add the bot <a href="https://t.me/RawDataBot" target="_blank">RawDataBot</a> to your group, get the chat_id and after remove this bot from group.',
+		],
+		'TestMessage' => [
+			'type' => 'info',
+			'content' => '',
 		],
 		'ParseMode' => [
 			'type' => 'select',
@@ -87,6 +92,8 @@ class LSTelegramNotifyPlugin extends \PluginBase
 	public function init(): void
 	{
 		$this->settings['DefaultText']['help'] = $this->createDefaultTextHelpBuilder()->build();
+		$this->settings['TestMessage'] = $this->createTestMessageUiBuilder()->buildSetting();
+		$this->registerTestMessageScript();
 		$this->subscribe('newSurveySettings');
 		$this->subscribe('afterSurveyComplete');
 		$this->subscribe('beforeSurveySettings');
@@ -111,18 +118,9 @@ class LSTelegramNotifyPlugin extends \PluginBase
 			return;
 		}
 
-		$chatId = $this->get(
-			'ChatId',
-			'Survey',
-			$surveyId,
-			$this->get('ChatId')
-		);
-		$telegram = new Api($this->get(
-			'AuthToken',
-			'Survey',
-			$surveyId,
-			$this->get('AuthToken')
-		));
+		$telegramSettings = $this->getTelegramConnectionSettings((int) $surveyId);
+		$chatId = $telegramSettings['chatId'];
+		$telegram = $this->createTelegramApi($telegramSettings['authToken']);
 		$this->sendMessage($surveyId, $responseId, $chatId, $telegram, $oSurvey->getLocalizedTitle());
 		$this->sendPdf($surveyId, $responseId, $chatId, $telegram);
 		$this->sendCsv($surveyId, $responseId, $chatId, $telegram);
@@ -252,6 +250,25 @@ class LSTelegramNotifyPlugin extends \PluginBase
 		];
 	}
 
+	/**
+	 * @return array{authToken: string, chatId: string}
+	 */
+	protected function getTelegramConnectionSettings(?int $surveyId = null): array
+	{
+		$authToken = (string) $this->get('AuthToken');
+		$chatId = (string) $this->get('ChatId');
+
+		if ($surveyId !== null) {
+			$authToken = (string) $this->get('AuthToken', 'Survey', $surveyId, $authToken);
+			$chatId = (string) $this->get('ChatId', 'Survey', $surveyId, $chatId);
+		}
+
+		return [
+			'authToken' => trim($authToken),
+			'chatId' => trim($chatId),
+		];
+	}
+
 	protected function isNotificationEnabled(int $surveyId): bool
 	{
 		return (bool) $this->get(
@@ -336,6 +353,21 @@ class LSTelegramNotifyPlugin extends \PluginBase
 	protected function createSurveyFieldValueProvider(): SurveyFieldValueProvider
 	{
 		return new SurveyFieldValueProvider();
+	}
+
+	protected function createTestMessageUiBuilder(): TestMessageUiBuilder
+	{
+		return new TestMessageUiBuilder();
+	}
+
+	protected function createTelegramApi(string $authToken): Api
+	{
+		return new Api($authToken);
+	}
+
+	protected function createTelegramTestMessageSender(): TelegramTestMessageSender
+	{
+		return new TelegramTestMessageSender();
 	}
 
 	private function sendPdf(int $surveyId, int $responseId, string $chatId, Api $telegram): void
@@ -465,6 +497,7 @@ class LSTelegramNotifyPlugin extends \PluginBase
 							$this->get('ChatId')
 						),
 					],
+					'TestMessage' => $this->createTestMessageUiBuilder()->buildSetting($surveyId),
 					'ParseMode' => [
 						'type' => $this->settings['ParseMode']['type'],
 						'label' => $this->settings['ParseMode']['label'],
@@ -547,6 +580,51 @@ class LSTelegramNotifyPlugin extends \PluginBase
 				]
 			]
 		);
+	}
+
+	public function sendTestMessage($request): string
+	{
+		$surveyId = $request->getPost('surveyId');
+		$normalizedSurveyId = null;
+
+		if ($surveyId !== null && $surveyId !== '') {
+			if (!is_numeric($surveyId)) {
+				return $this->buildJsonResponse(false, 'Invalid survey id.', 400);
+			}
+
+			$normalizedSurveyId = (int) $surveyId;
+
+			if (!\Permission::model()->hasSurveyPermission($normalizedSurveyId, 'surveysettings', 'update')) {
+				return $this->buildJsonResponse(
+					false,
+					'You do not have permission to test Telegram settings for this survey.',
+					403
+				);
+			}
+		} elseif (!\Permission::model()->hasGlobalPermission('settings', 'update')) {
+			return $this->buildJsonResponse(
+				false,
+				'You do not have permission to test the global Telegram settings.',
+				403
+			);
+		}
+
+		$telegramSettings = $this->getTelegramConnectionSettings($normalizedSurveyId);
+
+		if ($telegramSettings['authToken'] === '' || $telegramSettings['chatId'] === '') {
+			return $this->buildJsonResponse(false, 'Auth Token and Chat id must be saved before testing.', 400);
+		}
+
+		try {
+			$this->createTelegramTestMessageSender()->send(
+				$this->createTelegramApi($telegramSettings['authToken']),
+				$telegramSettings['chatId']
+			);
+		} catch (\Throwable $exception) {
+			return $this->buildJsonResponse(false, $exception->getMessage(), 502);
+		}
+
+		return $this->buildJsonResponse(true, 'Test message sent successfully.');
 	}
 
 	public function saveSurveyPluginSettings($request): string
@@ -667,6 +745,11 @@ JS,
 
 	protected function buildSurveyPluginSettingsSaveResponse(bool $success, string $message = '', int $statusCode = 200): string
 	{
+		return $this->buildJsonResponse($success, $message, $statusCode);
+	}
+
+	protected function buildJsonResponse(bool $success, string $message = '', int $statusCode = 200): string
+	{
 		http_response_code($statusCode);
 
 		$response = ['success' => $success];
@@ -682,6 +765,28 @@ JS,
 		}
 
 		return $json;
+	}
+
+	protected function registerTestMessageScript(): void
+	{
+		$endpointUrl = \App()->createAbsoluteUrl(
+			'/admin/pluginhelper/sa/ajax',
+			[
+				'plugin' => static::$name,
+				'method' => 'sendTestMessage',
+			]
+		);
+		$script = $this->createTestMessageUiBuilder()->buildScript($endpointUrl);
+
+		if ($script === '') {
+			return;
+		}
+
+		\Yii::app()->getClientScript()->registerScript(
+			'ls-telegram-notify-test-message',
+			$script,
+			\LSYii_ClientScript::POS_POSTSCRIPT
+		);
 	}
 
 	private function getCsv(int $surveyId): string
