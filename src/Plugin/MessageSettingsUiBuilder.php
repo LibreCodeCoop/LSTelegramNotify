@@ -11,7 +11,7 @@ var findLSTelegramNotifySettingField = function (settingName) {
     return $(
         '[name="' + settingName + '"], ' +
         '[name$="[' + settingName + ']"]'
-    ).first();
+    );
 };
 
 var findLSTelegramNotifySettingContainer = function ($field) {
@@ -41,7 +41,7 @@ var updateLSTelegramNotifyMessageSettingsVisibility = function () {
 
     ['ParseMode', 'DefaultText'].forEach(function (settingName) {
         findLSTelegramNotifySettingContainer(
-            findLSTelegramNotifySettingField(settingName)
+            findLSTelegramNotifySettingField(settingName).first()
         ).toggle(enabled);
     });
 };
