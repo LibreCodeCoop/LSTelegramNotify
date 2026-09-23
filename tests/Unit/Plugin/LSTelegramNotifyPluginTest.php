@@ -363,6 +363,18 @@ class LSTelegramNotifyPluginTest extends TestCase
 
         $this->assertIsArray($definition);
         $this->assertSame(LSTelegramNotifyPluginDouble::class, $definition['name']);
+        $this->assertSame([
+            'Enable',
+            'SettingsInfo',
+            'AuthToken',
+            'ChatId',
+            'TestMessage',
+            'SendMessage',
+            'ParseMode',
+            'DefaultText',
+            'SendPdf',
+            'SendCsv',
+        ], array_keys($definition['settings']));
         $this->assertTrue($definition['settings']['Enable']['current']);
         $this->assertSame('Enable telegram notifications', $definition['settings']['Enable']['label']);
         $this->assertSame('Auth Token', $definition['settings']['AuthToken']['label']);
