@@ -5,6 +5,7 @@ import {
   buildPluginActionSelector,
   enableCustomMessageSettings,
   fillTelegramConnectionSettings,
+  getPluginSettingContainer,
   extractPluginInstallRequest,
   getPluginManagerPageUrl,
   getPluginManagerScanFilesUrl,
