@@ -1,0 +1,109 @@
+# SPDX-FileCopyrightText: 2026 LibreCode coop and contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+name: Screenshot failure comment
+
+on:
+  workflow_run:
+    workflows:
+      - Documentation Screenshots
+    types:
+      - completed
+
+permissions:
+  actions: read
+  pull-requests: write
+
+jobs:
+  comment:
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.pull_requests[0].number != null
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download screenshot artifacts
+        id: artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh run download "$RUN_ID" --repo "$GH_REPO" --name documentation-screenshot-diffs --dir screenshot-artifacts; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Comment on pull request
+        if: steps.artifacts.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cat > screenshot-comment.md <<'EOF'
+          ## Documentation screenshot check failed
+
+          One or more generated documentation screenshots differ from the committed versions.
+          EOF
+
+          attachments=()
+
+          add_report() {
+            local key="$1"
+            local label="$2"
+            local expected="screenshot-artifacts/$key.expected.png"
+            local actual="screenshot-artifacts/$key.actual.png"
+            local diff="screenshot-artifacts/$key.diff.png"
+
+            if [[ ! -f "$actual" ]]; then
+              return
+            fi
+
+            cat >> screenshot-comment.md <<EOF
+
+          ### $label
+
+          #### Expected
+
+          ![Expected $label](./$expected)
+
+          #### Generated
+
+          ![Generated $label](./$actual)
+          EOF
+
+            if [[ -f "$expected" ]]; then
+              attachments+=("--attach" "./$expected#Expected $label")
+            fi
+
+            attachments+=("--attach" "./$actual#Generated $label")
+
+            if [[ -f "$diff" ]]; then
+              cat >> screenshot-comment.md <<EOF
+
+          #### Diff
+
+          ![Visual diff for $label](./$diff)
+          EOF
+              attachments+=("--attach" "./$diff#Visual diff for $label")
+            fi
+          }
+
+          add_report settings "Plugin settings"
+          add_report preview "Telegram preview"
+
+          cat >> screenshot-comment.md <<'EOF'
+
+          If the visual change is expected, run `npm run screenshots:update` and commit the updated PNG files.
+          EOF
+
+          gh pr comment "$PR_NUMBER" \
+            --repo "$GH_REPO" \
+            --body-file screenshot-comment.md \
+            "${attachments[@]}"
