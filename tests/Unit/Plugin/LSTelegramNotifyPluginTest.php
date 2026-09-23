@@ -377,8 +377,9 @@ class LSTelegramNotifyPluginTest extends TestCase
         ], array_keys($definition['settings']));
         $this->assertTrue($definition['settings']['Enable']['current']);
         $this->assertSame('Enable telegram notifications', $definition['settings']['Enable']['label']);
-        $this->assertSame('Auth Token', $definition['settings']['AuthToken']['label']);
+        $this->assertSame('Bot token', $definition['settings']['AuthToken']['label']);
         $this->assertSame('bot-token', $definition['settings']['AuthToken']['current']);
+        $this->assertSame('Chat ID', $definition['settings']['ChatId']['label']);
         $this->assertSame('chat-42', $definition['settings']['ChatId']['current']);
         $this->assertSame('Send a custom message', $definition['settings']['SendMessage']['label']);
         $this->assertStringContainsString('Enable this to choose the message format', $definition['settings']['SendMessage']['help']);
