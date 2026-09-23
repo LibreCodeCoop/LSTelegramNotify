@@ -35,18 +35,18 @@ class LSTelegramNotifyPlugin extends \PluginBase
 	protected $settings = [
 		'Enable' => [
 			'type' => 'checkbox',
-			'label' => 'Enable telegram notifications',
+			'label' => 'Enable Telegram notifications',
 			'default' => true,
 		],
 		'AuthToken' => [
 			'type' => 'string',
-			'label' => 'Auth Token',
-			'help' => 'Bot API auth token, you can get one at <a href="https://t.me/BotFather" target="_blank">BotFather</a>.',
+			'label' => 'Bot token',
+			'help' => 'Telegram Bot API token. Create or manage one with <a href="https://t.me/BotFather" target="_blank">BotFather</a>.',
 		],
 		'ChatId' => [
 			'type' => 'string',
-			'label' => 'Chat id',
-			'help' => 'The ID of group that will receive the notification messages. You can add the bot <a href="https://t.me/RawDataBot" target="_blank">RawDataBot</a> to your group, get the chat_id and after remove this bot from group.',
+			'label' => 'Chat ID',
+			'help' => 'The ID of the Telegram group that will receive notifications. You can temporarily add <a href="https://t.me/RawDataBot" target="_blank">RawDataBot</a> to the group to find its chat ID, then remove the bot.',
 		],
 		'TestMessage' => [
 			'type' => 'info',
@@ -82,7 +82,7 @@ class LSTelegramNotifyPlugin extends \PluginBase
 		],
 		'SendCsv' => [
 			'type' => 'checkbox',
-			'label' => 'Send survey responses as a CSV file',
+			'label' => 'Send all survey responses as a CSV file',
 			'default' => false,
 		],
 	];
@@ -495,7 +495,7 @@ class LSTelegramNotifyPlugin extends \PluginBase
 					],
 					'ChatId' => [
 						'type' => 'string',
-						'label' => 'Chat id',
+						'label' => $this->settings['ChatId']['label'],
 						'help' => $this->settings['ChatId']['help'],
 						'current' => $this->get(
 							'ChatId',
