@@ -12,6 +12,7 @@ final class TestMessageUiBuilderTest extends TestCase
         $setting = (new TestMessageUiBuilder())->buildSetting();
 
         $this->assertSame('info', $setting['type']);
+        $this->assertSame('Connection test', $setting['label']);
         $this->assertStringContainsString('Send test message', $setting['content']);
         $this->assertStringNotContainsString('data-survey-id=', $setting['content']);
         $this->assertStringContainsString('Save the Telegram settings before sending a test message.', $setting['content']);
