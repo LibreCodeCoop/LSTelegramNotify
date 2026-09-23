@@ -362,6 +362,11 @@ class LSTelegramNotifyPlugin extends \PluginBase
 		return new TestMessageUiBuilder();
 	}
 
+	protected function createMessageSettingsUiBuilder(): MessageSettingsUiBuilder
+	{
+		return new MessageSettingsUiBuilder();
+	}
+
 	protected function createTelegramApi(string $authToken): Api
 	{
 		return new Api($authToken);
@@ -700,55 +705,15 @@ class LSTelegramNotifyPlugin extends \PluginBase
 
 	protected function registerMessageSettingsVisibilityScript(): void
 	{
-		\Yii::app()->getClientScript()->registerScript(
-			'ls-telegram-notify-message-settings-visibility',
-			<<<'JS'
-	var findSettingField = function (settingName) {
-		return $(
-			'[name="' + settingName + '"], ' +
-			'[name$="[' + settingName + ']"]'
-		).first();
-	};
+		$script = $this->createMessageSettingsUiBuilder()->buildScript();
 
-	var findSettingContainer = function ($field) {
-		if (!$field.length) {
-			return $();
-		}
-
-		var $container = $field.closest('.mb-3, .form-group');
-
-		if ($container.length) {
-			return $container.first();
-		}
-
-		return $field.closest('.row').first();
-	};
-
-	var updateMessageSettingsVisibility = function () {
-		var $sendMessage = findSettingField('SendMessage');
-
-		if (!$sendMessage.length) {
+		if ($script === '') {
 			return;
 		}
 
-		var enabled = $sendMessage.is(':checked');
-
-		['ParseMode', 'DefaultText'].forEach(function (settingName) {
-			findSettingContainer(findSettingField(settingName)).toggle(enabled);
-		});
-	};
-
-	updateMessageSettingsVisibility();
-	$(document)
-		.off('change.lsTelegramNotifyMessageSettings', '[name$="[SendMessage]"], [name="SendMessage"]')
-		.on(
-			'change.lsTelegramNotifyMessageSettings',
-			'[name$="[SendMessage]"], [name="SendMessage"]',
-			updateMessageSettingsVisibility
-		)
-		.off('pjax:scriptcomplete.lsTelegramNotifyMessageSettings')
-		.on('pjax:scriptcomplete.lsTelegramNotifyMessageSettings', updateMessageSettingsVisibility);
-JS,
+		\Yii::app()->getClientScript()->registerScript(
+			'ls-telegram-notify-message-settings-visibility',
+			$script,
 			\LSYii_ClientScript::POS_POSTSCRIPT
 		);
 	}
