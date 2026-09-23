@@ -103,7 +103,7 @@ test('enableCustomMessageSettings requires hidden fields and reveals them after 
     },
   };
 
-  const messageFormat = {
+  const messageFormatLabel = {
     async isHidden() {
       return !enabled;
     },
@@ -134,9 +134,10 @@ test('enableCustomMessageSettings requires hidden fields and reveals them after 
       assert.deepEqual(options, { name: 'Message template' });
       return messageTemplate;
     },
-    getByLabel(label) {
-      assert.equal(label, 'Message format');
-      return messageFormat;
+    getByText(text, options) {
+      assert.equal(text, 'Message format');
+      assert.deepEqual(options, { exact: true });
+      return messageFormatLabel;
     },
   };
 
@@ -162,7 +163,7 @@ test('enableCustomMessageSettings fails when dependent fields are visible while 
         },
       };
     },
-    getByLabel() {
+    getByText() {
       return {
         async isHidden() {
           return false;
