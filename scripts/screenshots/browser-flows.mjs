@@ -294,17 +294,28 @@ export async function fillTelegramConnectionSettings(page, maskedSettingsValues)
   await page.getByRole('textbox', { name: 'Chat ID' }).fill(maskedSettingsValues.chatId);
 }
 
+export function getPluginSettingContainer(page, settingName) {
+  const settingField = page.locator(
+    `[name="${settingName}"], [name$="[${settingName}]"]`
+  ).first();
+
+  return settingField.locator(
+    'xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " mb-3 ") or contains(concat(" ", normalize-space(@class), " "), " form-group ")][1]'
+  );
+}
+
 export async function enableCustomMessageSettings(page) {
   const sendMessage = page.getByRole('checkbox', { name: 'Send a custom message' });
-  const messageFormatLabel = page.getByText('Message format', { exact: true });
+  const messageFormatContainer = getPluginSettingContainer(page, 'ParseMode');
+  const messageTemplateContainer = getPluginSettingContainer(page, 'DefaultText');
   const messageTemplate = page.getByRole('textbox', { name: 'Message template' });
 
-  await messageFormatLabel.waitFor({ state: 'hidden' });
-  await messageTemplate.waitFor({ state: 'hidden' });
+  await messageFormatContainer.waitFor({ state: 'hidden' });
+  await messageTemplateContainer.waitFor({ state: 'hidden' });
 
   await sendMessage.check();
-  await messageFormatLabel.waitFor({ state: 'visible' });
-  await messageTemplate.waitFor({ state: 'visible' });
+  await messageFormatContainer.waitFor({ state: 'visible' });
+  await messageTemplateContainer.waitFor({ state: 'visible' });
 
   return messageTemplate;
 }
