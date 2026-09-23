@@ -289,6 +289,11 @@ async function waitForDocumentFonts(page) {
   });
 }
 
+export async function fillTelegramConnectionSettings(page, maskedSettingsValues) {
+  await page.getByRole('textbox', { name: 'Bot token' }).fill(maskedSettingsValues.authToken);
+  await page.getByRole('textbox', { name: 'Chat ID' }).fill(maskedSettingsValues.chatId);
+}
+
 export async function enableCustomMessageSettings(page) {
   const sendMessage = page.getByRole('checkbox', { name: 'Send a custom message' });
   const messageFormatLabel = page.getByText('Message format', { exact: true });
@@ -314,8 +319,7 @@ export async function captureSettingsScreenshot(page, {
   await page.goto(configureUrl, { waitUntil: 'networkidle' });
   await page.getByRole('tab', { name: 'Settings' }).click();
 
-  await page.getByRole('textbox', { name: 'Bot token' }).fill(maskedSettingsValues.authToken);
-  await page.getByRole('textbox', { name: 'Chat ID' }).fill(maskedSettingsValues.chatId);
+  await fillTelegramConnectionSettings(page, maskedSettingsValues);
 
   const defaultTextField = await enableCustomMessageSettings(page);
 
