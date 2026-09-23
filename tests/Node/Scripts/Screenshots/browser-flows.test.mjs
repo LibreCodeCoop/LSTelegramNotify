@@ -4,6 +4,7 @@ import {
   buildPluginInstallInputSelector,
   buildPluginActionSelector,
   enableCustomMessageSettings,
+  fillTelegramConnectionSettings,
   extractPluginInstallRequest,
   getPluginManagerPageUrl,
   getPluginManagerScanFilesUrl,
@@ -91,6 +92,31 @@ test('isPluginActionDisabled detects the disabled dropdown class', () => {
 test('shouldIgnorePageErrorMessage filters the known CKEditor language error only', () => {
   assert.equal(shouldIgnorePageErrorMessage("Cannot read properties of null (reading 'langEntries')"), true);
   assert.equal(shouldIgnorePageErrorMessage('Something else exploded'), false);
+});
+
+test('fillTelegramConnectionSettings follows the current settings labels', async () => {
+  const fills = [];
+  const page = {
+    getByRole(role, options) {
+      assert.equal(role, 'textbox');
+
+      return {
+        async fill(value) {
+          fills.push([options.name, value]);
+        },
+      };
+    },
+  };
+
+  await fillTelegramConnectionSettings(page, {
+    authToken: 'masked-token',
+    chatId: '-10042',
+  });
+
+  assert.deepEqual(fills, [
+    ['Bot token', 'masked-token'],
+    ['Chat ID', '-10042'],
+  ]);
 });
 
 test('enableCustomMessageSettings waits for hidden fields and reveals them after enabling the message', async () => {
