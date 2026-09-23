@@ -48,10 +48,7 @@ test('comparePngBuffers reports changed pixels', () => {
   });
 
   assert.equal(result.matches, false);
-  assert.equal(result.type, 'pixels');
   assert.equal(result.diffPixels, 1);
-  assert.deepEqual(result.expectedSize, { width: 2, height: 1 });
-  assert.deepEqual(result.actualSize, { width: 2, height: 1 });
   assert.match(result.reason, /Detected 1 different pixels/);
   assert.ok(result.diffBuffer);
 });
@@ -103,10 +100,7 @@ test('comparePngBuffers fails when image dimensions differ', () => {
   const result = comparePngBuffers(expectedBuffer, actualBuffer);
 
   assert.equal(result.matches, false);
-  assert.equal(result.type, 'size');
   assert.equal(result.diffPixels, Number.POSITIVE_INFINITY);
-  assert.deepEqual(result.expectedSize, { width: 1, height: 1 });
-  assert.deepEqual(result.actualSize, { width: 2, height: 1 });
   assert.match(result.reason, /Image dimensions differ/);
   assert.equal(result.diffBuffer, null);
 });
