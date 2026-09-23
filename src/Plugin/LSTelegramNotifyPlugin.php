@@ -52,37 +52,38 @@ class LSTelegramNotifyPlugin extends \PluginBase
 			'type' => 'info',
 			'content' => '',
 		],
-		'ParseMode' => [
-			'type' => 'select',
-			'label' => 'Parse mode',
-			'options' => array('HTML' => 'HTML', 'Markdown'  => 'Markdown', 'MarkdownV2' => 'MarkdownV2', 'Text' => 'Text'),
-			'help' => 'As the Telegram bot API <a href="https://core.telegram.org/bots/api#formatting-options" target="_blank">formatting options</a>.',
-			'default' => 'HTML',
-		],
-		'SendPdf' => [
-			'type' => 'checkbox',
-			'label' => 'Check to send the answer as PDF file',
-			'default' => false,
-		],
-		'SendCsv' => [
-			'type' => 'checkbox',
-			'label' => 'Check to send all answers as CSV file',
-			'default' => false,
-		],
 		'SendMessage' => [
 			'type' => 'checkbox',
-			'label' => 'Check to send a text message using the default text template',
+			'label' => 'Send a custom message',
+			'help' => 'Send a Telegram text message when a survey response is completed. Enable this to choose the message format and edit the template below.',
 			'default' => false,
+		],
+		'ParseMode' => [
+			'type' => 'select',
+			'label' => 'Message format',
+			'options' => array('HTML' => 'HTML', 'Markdown'  => 'Markdown', 'MarkdownV2' => 'MarkdownV2', 'Text' => 'Text'),
+			'help' => 'Formatting used for the custom Telegram message. See the <a href="https://core.telegram.org/bots/api#formatting-options" target="_blank">Telegram formatting options</a>.',
+			'default' => 'HTML',
 		],
 		'DefaultText' => [
 			'type' => 'text',
-			'label' => 'Default Text',
+			'label' => 'Message template',
 			'default' =>
 				"New Survey Completed!\n" .
 				"Title: <code>{title}</code>\n" .
 				"SurveyId: <code>{surveyId}</code>\n" .
 				"ResponseId: <code>{responseId}</code>\n" .
 				"PDF: <a href=\"{urlPDF}\">here</a>"
+		],
+		'SendPdf' => [
+			'type' => 'checkbox',
+			'label' => 'Send the response as a PDF file',
+			'default' => false,
+		],
+		'SendCsv' => [
+			'type' => 'checkbox',
+			'label' => 'Send survey responses as a CSV file',
+			'default' => false,
 		],
 	];
 
@@ -94,6 +95,7 @@ class LSTelegramNotifyPlugin extends \PluginBase
 		$this->settings['DefaultText']['help'] = $this->createDefaultTextHelpBuilder()->build();
 		$this->settings['TestMessage'] = $this->createTestMessageUiBuilder()->buildSetting();
 		$this->registerTestMessageScript();
+		$this->registerMessageSettingsVisibilityScript();
 		$this->subscribe('newSurveySettings');
 		$this->subscribe('afterSurveyComplete');
 		$this->subscribe('beforeSurveySettings');
@@ -498,6 +500,22 @@ class LSTelegramNotifyPlugin extends \PluginBase
 						),
 					],
 					'TestMessage' => $this->createTestMessageUiBuilder()->buildSetting($surveyId),
+					'SendMessage' => [
+						'type' => $this->settings['SendMessage']['type'],
+						'label' => $this->settings['SendMessage']['label'],
+						'help' => $this->settings['SendMessage']['help'],
+						'current' => $this->get(
+							'SendMessage',
+							'Survey',
+							$surveyId,
+							$this->get(
+								'SendMessage',
+								null,
+								null,
+								$this->settings['SendMessage']['default']
+							)
+						),
+					],
 					'ParseMode' => [
 						'type' => $this->settings['ParseMode']['type'],
 						'label' => $this->settings['ParseMode']['label'],
@@ -513,6 +531,22 @@ class LSTelegramNotifyPlugin extends \PluginBase
 								null,
 								null,
 								$this->settings['ParseMode']['default']
+							)
+						),
+					],
+					'DefaultText' => [
+						'type' => 'text',
+						'label' => $this->settings['DefaultText']['label'],
+						'help' => $defaultTextHelp,
+						'current' => $this->get(
+							'DefaultText',
+							'Survey',
+							$surveyId,
+							$this->get(
+								'DefaultText',
+								null,
+								null,
+								$this->settings['DefaultText']['default']
 							)
 						),
 					],
@@ -546,37 +580,7 @@ class LSTelegramNotifyPlugin extends \PluginBase
 							)
 						),
 					],
-					'SendMessage' => [
-						'type' => $this->settings['SendMessage']['type'],
-						'label' => $this->settings['SendMessage']['label'],
-						'current' => $this->get(
-							'SendMessage',
-							'Survey',
-							$surveyId,
-							$this->get(
-								'SendMessage',
-								null,
-								null,
-								$this->settings['SendMessage']['default']
-							)
-						),
-					],
-					'DefaultText' => [
-						'type' => 'text',
-						'label' => 'Default Text',
-						'help' => $defaultTextHelp,
-						'current' => $this->get(
-							'DefaultText',
-							'Survey',
-							$surveyId,
-							$this->get(
-								'DefaultText',
-								null,
-								null,
-								$this->settings['DefaultText']['default']
-							)
-						),
-					]
+
 				]
 			]
 		);
@@ -692,6 +696,61 @@ class LSTelegramNotifyPlugin extends \PluginBase
 		foreach ($settings as $name => $value) {
 			$this->set($name, $value, 'Survey', (int) $surveyId);
 		}
+	}
+
+	protected function registerMessageSettingsVisibilityScript(): void
+	{
+		\Yii::app()->getClientScript()->registerScript(
+			'ls-telegram-notify-message-settings-visibility',
+			<<<'JS'
+	var findSettingField = function (settingName) {
+		return $(
+			'[name="' + settingName + '"], ' +
+			'[name$="[' + settingName + ']"]'
+		).first();
+	};
+
+	var findSettingContainer = function ($field) {
+		if (!$field.length) {
+			return $();
+		}
+
+		var $container = $field.closest('.mb-3, .form-group');
+
+		if ($container.length) {
+			return $container.first();
+		}
+
+		return $field.closest('.row').first();
+	};
+
+	var updateMessageSettingsVisibility = function () {
+		var $sendMessage = findSettingField('SendMessage');
+
+		if (!$sendMessage.length) {
+			return;
+		}
+
+		var enabled = $sendMessage.is(':checked');
+
+		['ParseMode', 'DefaultText'].forEach(function (settingName) {
+			findSettingContainer(findSettingField(settingName)).toggle(enabled);
+		});
+	};
+
+	updateMessageSettingsVisibility();
+	$(document)
+		.off('change.lsTelegramNotifyMessageSettings', '[name$="[SendMessage]"], [name="SendMessage"]')
+		.on(
+			'change.lsTelegramNotifyMessageSettings',
+			'[name$="[SendMessage]"], [name="SendMessage"]',
+			updateMessageSettingsVisibility
+		)
+		.off('pjax:scriptcomplete.lsTelegramNotifyMessageSettings')
+		.on('pjax:scriptcomplete.lsTelegramNotifyMessageSettings', updateMessageSettingsVisibility);
+JS,
+			\LSYii_ClientScript::POS_POSTSCRIPT
+		);
 	}
 
 	protected function registerSurveyPluginSettingsSaveWorkaround(): void
