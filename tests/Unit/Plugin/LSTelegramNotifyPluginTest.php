@@ -43,6 +43,15 @@ class LSTelegramNotifyPluginTest extends TestCase
             'survey-specific plugin settings',
             $plugin->getSettingsDefinition()['DefaultText']['help']
         );
+        $this->assertArrayHasKey('ls-telegram-notify-message-settings-visibility', \Yii::$registeredScripts);
+        $this->assertStringContainsString(
+            "['ParseMode', 'DefaultText']",
+            \Yii::$registeredScripts['ls-telegram-notify-message-settings-visibility']['script']
+        );
+        $this->assertStringContainsString(
+            'SendMessage',
+            \Yii::$registeredScripts['ls-telegram-notify-message-settings-visibility']['script']
+        );
     }
 
     public function testAfterSurveyCompleteSkipsProcessingWhenNotificationsAreDisabled(): void
@@ -374,9 +383,6 @@ class LSTelegramNotifyPluginTest extends TestCase
         $this->assertStringContainsString('CONTATO[EMAIL]', $definition['settings']['DefaultText']['help']);
         $this->assertStringContainsString('E-mail para contato', $definition['settings']['DefaultText']['help']);
         $this->assertStringContainsString('NOME', $definition['settings']['DefaultText']['help']);
-        $this->assertArrayHasKey('ls-telegram-notify-message-settings-visibility', \Yii::$registeredScripts);
-        $this->assertStringContainsString("['ParseMode', 'DefaultText']", \Yii::$registeredScripts['ls-telegram-notify-message-settings-visibility']['script']);
-        $this->assertStringContainsString('SendMessage', \Yii::$registeredScripts['ls-telegram-notify-message-settings-visibility']['script']);
         $this->assertArrayHasKey('ls-telegram-notify-survey-plugin-save-workaround', \Yii::$registeredScripts);
         $this->assertStringContainsString('pluginhelper\\/sa\\/ajax', \Yii::$registeredScripts['ls-telegram-notify-survey-plugin-save-workaround']['script']);
         $this->assertStringContainsString('saveSurveyPluginSettings', \Yii::$registeredScripts['ls-telegram-notify-survey-plugin-save-workaround']['script']);
