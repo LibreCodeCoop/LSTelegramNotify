@@ -32,8 +32,9 @@ The image below is a locally generated preview of a rendered Telegram message us
 3. Get the group chat ID. One option is to temporarily add [@RawDataBot](https://t.me/RawDataBot) to the group, read the `chat.id` value it reports, and remove the bot afterwards.
 4. Open the LSTelegramNotify settings in LimeSurvey.
 5. Set `Auth Token` to the token created by BotFather and `Chat id` to the destination group ID.
-6. Choose the parse mode and notification options you want, then save the settings.
-7. Use `Send test message` to verify that the saved bot token and chat destination work before relying on survey notifications.
+6. Enable `Send a custom message` if you want a Telegram message for each completed response. When enabled, choose the `Message format` and edit the `Message template`.
+7. Enable the PDF and CSV options independently if you also want those files sent with each completed response.
+8. Save the settings, then use `Send test message` to verify that the saved bot token and chat destination work before relying on survey notifications.
 
 The README screenshots below show the current plugin settings and a rendered Telegram notification example. They are generated and validated automatically by the repository screenshot workflow.
 
@@ -65,7 +66,7 @@ These placeholders work in both legacy and mustache syntax:
 - `{urlExport}` / `{{urlExport}}`
 - `{urlAttachments}` / `{{urlAttachments}}`
 
-When `ParseMode` is `HTML`, the rendered template is sent through Telegram's `sendRichMessage` API using Rich HTML. This enables richer blocks such as headings, tables, `<details>` and media such as `<img src="https://example.test/photo.jpg" />`. All placeholder values are escaped before rendering so survey content cannot break the markup.
+When `Message format` is `HTML`, the rendered template is sent through Telegram's `sendRichMessage` API using Rich HTML. This enables richer blocks such as headings, tables, `<details>` and media such as `<img src="https://example.test/photo.jpg" />`. All placeholder values are escaped before rendering so survey content cannot break the markup.
 
 ### Survey field placeholders
 
