@@ -291,15 +291,15 @@ async function waitForDocumentFonts(page) {
 
 export async function enableCustomMessageSettings(page) {
   const sendMessage = page.getByRole('checkbox', { name: 'Send a custom message' });
-  const messageFormat = page.getByLabel('Message format');
+  const messageFormatLabel = page.getByText('Message format', { exact: true });
   const messageTemplate = page.getByRole('textbox', { name: 'Message template' });
 
-  if (!(await messageFormat.isHidden()) || !(await messageTemplate.isHidden())) {
+  if (!(await messageFormatLabel.isHidden()) || !(await messageTemplate.isHidden())) {
     throw new Error('Custom message fields must stay hidden until Send a custom message is enabled.');
   }
 
   await sendMessage.check();
-  await messageFormat.waitFor({ state: 'visible' });
+  await messageFormatLabel.waitFor({ state: 'visible' });
   await messageTemplate.waitFor({ state: 'visible' });
 
   return messageTemplate;
