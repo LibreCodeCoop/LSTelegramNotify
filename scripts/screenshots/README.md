@@ -46,5 +46,7 @@ Useful optional overrides:
 - `Documentation Screenshots` starts the repository-root disposable LimeSurvey stack with Docker Compose (`up -d --force-recreate`) and validates both `img/settings.png` and `img/telegram_example.png` in a single job.
 - The workflow should break when the plugin settings UI changes enough to make `img/settings.png` drift from the committed version.
 
-When validation fails, the workflow summary tells you which command to run next and uploads diff artifacts under `test-results/screenshots/`.
+When validation fails, the workflow summary tells you which command to run next and uploads the committed, generated, and visual-diff images under `test-results/screenshots/`.
+
+For pull requests, the `Screenshot failure comment` workflow downloads that artifact, publishes the images to the dedicated `screenshot-reports` branch, and comments on the PR with the committed screenshot, the generated screenshot, and the visual difference. The report branch is used because GitHub Actions tokens cannot upload PR comment attachments through `gh pr comment --attach`.
 
