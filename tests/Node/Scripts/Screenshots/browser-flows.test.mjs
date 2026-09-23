@@ -120,7 +120,7 @@ test('fillTelegramConnectionSettings follows the current settings labels', async
   ]);
 });
 
-test('enableCustomMessageSettings waits for hidden fields and reveals them after enabling the message', async () => {
+test('enableCustomMessageSettings waits for hidden setting containers and reveals them after enabling the message', async () => {
   let enabled = false;
   const waits = [];
 
@@ -130,24 +130,32 @@ test('enableCustomMessageSettings waits for hidden fields and reveals them after
     },
   };
 
-  const buildDependentField = (name) => ({
+  const buildContainer = (name) => ({
     async waitFor(options) {
       waits.push([name, options]);
-
-      if (options.state === 'hidden') {
-        assert.equal(enabled, false);
-        return;
-      }
-
-      assert.equal(options.state, 'visible');
-      assert.equal(enabled, true);
+      assert.equal(enabled, options.state === 'visible');
     },
   });
 
-  const messageFormatLabel = buildDependentField('format');
-  const messageTemplate = buildDependentField('template');
+  const formatContainer = buildContainer('format');
+  const templateContainer = buildContainer('template');
+  const messageTemplate = {};
+
+  const buildField = (container) => ({
+    first() {
+      return this;
+    },
+    locator() {
+      return container;
+    },
+  });
 
   const page = {
+    locator(selector) {
+      return selector.includes('ParseMode')
+        ? buildField(formatContainer)
+        : buildField(templateContainer);
+    },
     getByRole(role, options) {
       if (role === 'checkbox') {
         assert.deepEqual(options, { name: 'Send a custom message' });
@@ -157,11 +165,6 @@ test('enableCustomMessageSettings waits for hidden fields and reveals them after
       assert.equal(role, 'textbox');
       assert.deepEqual(options, { name: 'Message template' });
       return messageTemplate;
-    },
-    getByText(text, options) {
-      assert.equal(text, 'Message format');
-      assert.deepEqual(options, { exact: true });
-      return messageFormatLabel;
     },
   };
 
