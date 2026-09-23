@@ -302,7 +302,9 @@ export async function captureSettingsScreenshot(page, {
   await page.getByRole('textbox', { name: 'Auth Token' }).fill(maskedSettingsValues.authToken);
   await page.getByRole('textbox', { name: 'Chat id' }).fill(maskedSettingsValues.chatId);
 
-  const defaultTextField = page.getByRole('textbox', { name: 'Default Text' });
+  await page.getByRole('checkbox', { name: 'Send a custom message' }).check();
+
+  const defaultTextField = page.getByRole('textbox', { name: 'Message template' });
 
   await defaultTextField.fill(maskedSettingsValues.defaultText);
   await defaultTextField.evaluate((element) => {
