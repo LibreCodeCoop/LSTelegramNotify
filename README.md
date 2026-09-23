@@ -32,6 +32,7 @@ The image below is a locally generated preview of a rendered Telegram message us
 4. Open the LSTelegramNotify settings in LimeSurvey.
 5. Set `Auth Token` to the token created by BotFather and `Chat id` to the destination group ID.
 6. Choose the parse mode and notification options you want, then save the settings.
+7. Use `Send test message` to verify that the saved bot token and chat destination work before relying on survey notifications.
 
 The README screenshots below show the current plugin settings and a rendered Telegram notification example. They are generated and validated automatically by the repository screenshot workflow.
 
