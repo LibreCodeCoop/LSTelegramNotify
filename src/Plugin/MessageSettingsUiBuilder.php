@@ -46,7 +46,7 @@ var updateLSTelegramNotifyMessageSettingsVisibility = function () {
     });
 };
 
-updateLSTelegramNotifyMessageSettingsVisibility();
+$(updateLSTelegramNotifyMessageSettingsVisibility);
 $(document)
     .off(
         'change.lsTelegramNotifyMessageSettings',
@@ -55,6 +55,12 @@ $(document)
     .on(
         'change.lsTelegramNotifyMessageSettings',
         'input[type="checkbox"][name$="[SendMessage]"], input[type="checkbox"][name="SendMessage"]',
+        updateLSTelegramNotifyMessageSettingsVisibility
+    )
+    .off('shown.bs.tab.lsTelegramNotifyMessageSettings')
+    .on(
+        'shown.bs.tab.lsTelegramNotifyMessageSettings',
+        '[data-bs-toggle="tab"], [data-toggle="tab"]',
         updateLSTelegramNotifyMessageSettingsVisibility
     )
     .off('pjax:scriptcomplete.lsTelegramNotifyMessageSettings')
