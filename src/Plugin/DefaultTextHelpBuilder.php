@@ -21,7 +21,7 @@ class DefaultTextHelpBuilder
             '<ul>' . $this->buildMetadataPlaceholderHelpItems() . '</ul>',
             '<p><strong>Survey field syntax</strong></p>',
             '<ul>' . $this->buildFieldSyntaxHelpItems() . '</ul>',
-            '<p>When <code>ParseMode</code> is <code>HTML</code>, placeholder values are escaped automatically before rendering.</p>',
+            '<p>When <strong>Message format</strong> is <code>HTML</code>, placeholder values are escaped automatically before rendering.</p>',
         ];
 
         if ($surveyId === null) {
