@@ -11,9 +11,9 @@
   "devDependencies": {
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@fontsource/inter": "^5.3.0",
-    "dotenv": "^18.0.5",
+    "dotenv": "^18.0.8",
     "pixelmatch": "^8.0.0",
-    "playwright": "^1.63.0",
+    "playwright": "^1.64.1",
     "pngjs": "^7.0.0"
   }
 }
